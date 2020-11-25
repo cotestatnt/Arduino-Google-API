@@ -1,6 +1,6 @@
 # Arduino-Google-API
 
-With **GoogleAPI Arduino library**, you can easily authenticate your device as OAuth 2.0 client without user interaction except for the first time when your application must be authorized in order to provide the user's consent.
+With **GoogleAPI Arduino library**, you can easily authenticate your Espressif (ESP8266 and ESP32) device as OAuth 2.0 client without user interaction except for the first time when your application must be authorized in order to provide the user's consent.
 
 Note that you will be warned about "unverified App". Just click on *advanced* and then go to *---your app name---(unsafe)*.
 (If you need, you can send a verification request to Google)
@@ -21,7 +21,7 @@ This method allow only few scopes for your application.
 
 The second choice, can be used for every scope you need, but a small webserver running in our device is necessary because we have to call Google APIs for tokens directly from device!
 
-In the examples provided with library, you will find a webserver that can load pages from flash memory (ESP32 or ESP8266) or SD (To Do!).
+In the examples provided with library, you will find a webserver that can load pages from flash memory.
 For convenience, the provided *token.html* page can handle all the flow for you and also save the json configuration file. You can call it passing the configuration file as argument or without argument and write all necessary datas after.
 Ex: http://espfs.local/token.htm or http://espfs.local/token.htm?json=gmail.json or http://espfs.local/token.htm?json=gdrive.json and so on.
 At the end of procedure, configuration file will be updated or created if not present in filesystem.
@@ -33,5 +33,5 @@ Be carefull, this library needs a filesystem in order to store all necessary dat
 When you choice the board, set properly the partition scheme if necessary. Ex: for ESP8266 the best choice for me is LittleFS and you can use the convenient [Arduino IDE tool Arduino ESP8266 LittleFS Filesystem Uploader](https://github.com/earlephilhower/arduino-esp8266littlefs-plugin) in order to upload html webserver files alls in once.
 
 With ESP32 the best filesystem for me is FFat (Fast FAT), but I was not able to find a working equivalent plugin up to now.
-You can still easily upload all necessary files, but one by one with the provided webserver built-in editor http://espfs.local/edit or use SPIFFS (slower and without folder support). With SD card you can copy manually the files.
+You can still easily upload all necessary files, but one by one with the provided webserver built-in editor http://espfs.local/edit or use SPIFFS (slower and without folder support).
 ![built-in edit page](/editor.png)
