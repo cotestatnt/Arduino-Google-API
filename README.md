@@ -20,9 +20,11 @@ With the first choice, the user switches to a device with richer input capabilit
 This method allow only few scopes for your application.
 
 The second choice, can be used for every scope you need, but a small webserver running in our device is necessary because we have to call Google APIs for tokens directly from device!
+
 In the examples provided with library, you will find a webserver that can load pages from flash memory (ESP32 or ESP8266) or SD (To Do!).
-For convenience, the built-in *token.html* page can handle all the flow for you and also save the json configuration file. You can call it passing as argument the configuration file to load or without argument and write all necessary inputs after.
-Ex: http://espfs.local/token.htm?json=gmail.json or http://espfs.local/token.htm?json=gdrive.json and so on.
+For convenience, the built-in *token.html* page can handle all the flow for you and also save the json configuration file. You can call it passing the configuration file as argument or without argument and write all necessary datas after.
+Ex: http://espfs.local/token.htm or http://espfs.local/token.htm?json=gmail.json or http://espfs.local/token.htm?json=gdrive.json and so on.
+At the end of procedure, configuration file will be updated or created if not present in filesystem.
 
 ![Tokens Helper page](/token_helper.png)
 
@@ -32,3 +34,4 @@ When you choice the board, set properly the partition scheme if necessary. Ex: f
 
 With ESP32 the best filesystem for me is FFat (Fast FAT), but I was not able to find a working equivalent tool.
 You can still easily upload all necessary files one by one with the library built-in editor http://espfs.local/edit or use SPIFFS (slower and without folder support). With SD card you can copy manually the files.
+![built-in edit page](/editor.png)
