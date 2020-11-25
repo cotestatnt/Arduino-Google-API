@@ -22,7 +22,7 @@ This method allow only few scopes for your application.
 The second choice, can be used for every scope you need, but a small webserver running in our device is necessary because we have to call Google APIs for tokens directly from device!
 
 In the examples provided with library, you will find a webserver that can load pages from flash memory (ESP32 or ESP8266) or SD (To Do!).
-For convenience, the built-in *token.html* page can handle all the flow for you and also save the json configuration file. You can call it passing the configuration file as argument or without argument and write all necessary datas after.
+For convenience, the provided *token.html* page can handle all the flow for you and also save the json configuration file. You can call it passing the configuration file as argument or without argument and write all necessary datas after.
 Ex: http://espfs.local/token.htm or http://espfs.local/token.htm?json=gmail.json or http://espfs.local/token.htm?json=gdrive.json and so on.
 At the end of procedure, configuration file will be updated or created if not present in filesystem.
 
@@ -32,6 +32,6 @@ N.B.
 Be carefull, this library needs a filesystem in order to store all necessary data, tokens and webserver pages.
 When you choice the board, set properly the partition scheme if necessary. Ex: for ESP8266 the best choice for me is LittleFS and you can use the convenient [Arduino IDE tool Arduino ESP8266 LittleFS Filesystem Uploader](https://github.com/earlephilhower/arduino-esp8266littlefs-plugin) in order to upload html webserver files alls in once.
 
-With ESP32 the best filesystem for me is FFat (Fast FAT), but I was not able to find a working equivalent tool.
-You can still easily upload all necessary files one by one with the library built-in editor http://espfs.local/edit or use SPIFFS (slower and without folder support). With SD card you can copy manually the files.
+With ESP32 the best filesystem for me is FFat (Fast FAT), but I was not able to find a working equivalent plugin up to now.
+You can still easily upload all necessary files, but one by one with the provided webserver built-in editor http://espfs.local/edit or use SPIFFS (slower and without folder support). With SD card you can copy manually the files.
 ![built-in edit page](/editor.png)
