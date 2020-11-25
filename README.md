@@ -17,7 +17,7 @@ There are two ways to do it with this library:
 * Authorize your application as Web application using OAuth 2.0 endpoint for [Web Server Applications](https://developers.google.com/identity/protocols/oauth2/web-server) (for this method you need also API key)
 
 With the first choice, the user switches to a device with richer input capabilities, launches a web browser, navigates to the URL displayed and enters the code provided. The user can then grant (or deny) access to your application.
-This method allow only few scopes for your application.
+This method allow only few [scopes](https://developers.google.com/identity/protocols/oauth2/limited-input-device#allowedscopes) for your application.
 
 The second choice, can be used for every scope you need, but a small webserver running in our device is necessary because we have to call Google APIs for tokens directly from device!
 
