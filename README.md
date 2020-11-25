@@ -5,11 +5,11 @@ With **GoogleAPI Arduino library**, you can easily authenticate your device as O
 Note that you will be warned about "unverified App". Just click on *advanced* and then go to *---your app name---(unsafe)*.
 (If you need, you can send a verification request to Google)
 
-The first step is enable all the required APIs (Drive, Gmail, Calendar etc etc), then you can edit or create a new Project and set-up credentials in order to abtain a valid **Client ID, Client Secret, API key and application Scopes**.
+The first step is enable all the required APIs (Drive, Gmail, Calendar etc etc), then you can edit or create a new Project and set-up credentials in order to abtain a valid **Client ID, Client Secret, API key**. You have to define also wich [scope]https://developers.google.com/identity/protocols/oauth2/scopes your application will be able to manage.
 Follow instructions provided in *API Console Help* https://support.google.com/googleapi/answer/7037264 for detailed instructions and How-To.
 To create your project and credentials visit the page *Google API Console* https://console.developers.google.com/apis/credentials
-![GitHub Logo](/images/logo.png)
-Format: ![Alt Text](url)
+
+![Google API credentials](/credentials.png)
 
 Then user have to authorize the application. There are two ways to do it with this library:
 Authorize your application as TV and Limited Input using OAuth 2.0 endpoint for TV and Limited-Input Device
