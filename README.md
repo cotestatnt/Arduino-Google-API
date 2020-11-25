@@ -9,7 +9,7 @@ The first step is enable all the required APIs (Drive, Gmail, Calendar etc etc),
 Follow instructions provided in [API Console Help](https://support.google.com/googleapi/answer/7037264) for detailed instructions and How-To.
 To create your project and credentials visit the page [Google API Console](https://console.developers.google.com/apis/credentials)
 
-![Google API credentials](/credentials.png)
+![Google API credentials](/credentials1.png)
 
 Then user have to authorize the application. There are two ways to do it with this library:
 * Authorize your application as TV and Limited Input using OAuth 2.0 endpoint for TV and Limited-Input Device
