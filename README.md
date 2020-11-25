@@ -11,9 +11,10 @@ To create your project and credentials visit the page [Google API Console](https
 
 ![Google API credentials](/credentials1.png)
 
-Then user have to authorize the application. There are two ways to do it with this library:
-* Authorize your application as TV and Limited Input using OAuth 2.0 endpoint for TV and Limited-Input Device
-* Authorize your application as Web application using OAuth 2.0 endpoint for Web Server Applications (for this method you need also API key)
+Then user have to authorize the application in order to get a valid **access token** and a **refresh token** to renew the access token when expired.
+There are two ways to do it with this library:
+* Authorize your application as TV and Limited Input using OAuth 2.0 endpoint for [TV and Limited-Input Device](https://developers.google.com/identity/protocols/oauth2/limited-input-device)
+* Authorize your application as Web application using OAuth 2.0 endpoint for [Web Server Applications](https://developers.google.com/identity/protocols/oauth2/web-server) (for this method you need also API key)
 
 With the first choice, the user switches to a device with richer input capabilities, launches a web browser, navigates to the URL displayed and enters the code provided. The user can then grant (or deny) access to your application.
 This method allow only few scopes for your application.
