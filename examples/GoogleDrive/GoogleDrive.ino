@@ -100,35 +100,35 @@ void setup(){
 
     // Print some information about heap memory before use init the library
     printHeapStats();
-	
-    // Begin, after wait authorize if necessary (with 60s timeout)
-	if (myDrive.begin(CLIENT_ID, CLIENT_SECRET, SCOPES)){
-		uint32_t timeout = millis();
-		while (myDrive.getState() != GoogleDriveAPI::GOT_TOKEN){
-			// Wait for user authorization on https//www.google.come/device
-			delay(10000);
-			if(millis() - timeout > 60000) break;
-		}
 
-		/*  
-		 *  Check if the "app folder" is present in your Drive
-		 *  The method searchFile() will also populate the local filelist with all files 
-		 *  present online, so we can quick access to the file id without interrogate
-		 *  google server each time we need.
-		*/
-		if (myDrive.getState() == GoogleDriveAPI::GOT_TOKEN){
-			const char* appFolderId = myDrive.searchFile(APP_FOLDERNAME);
-			
-			if (appFolderId != nullptr) {
-				Serial.println("\n\nFiled created with this app:");
-				driveList.printList();
-			}
-			else {
-				Serial.println("Folder APP not present. Now it will be created.");
-				myDrive.createAppFolder(APP_FOLDERNAME);
-			}
-		}
-	}
+    // Begin, after wait authorize if necessary (with 30s timeout)
+    myDrive.begin(CLIENT_ID, CLIENT_SECRET, SCOPES);
+
+    uint32_t timeout = millis();
+    while (myDrive.getState() != GoogleDriveAPI::GOT_TOKEN){
+        // Wait for user authorization on https//www.google.come/device
+        delay(10000);
+        if(millis() - timeout > 60000) break;
+    }
+
+    /*  
+     *  Check if the "app folder" is present in your Drive
+     *  The method searchFile() will also populate the local filelist with all files 
+     *  present online, so we can quick access to the file id without interrogate
+     *  google server each time we need.
+    */
+    if (myDrive.getState() == GoogleDriveAPI::GOT_TOKEN){
+        const char* appFolderId = myDrive.searchFile(APP_FOLDERNAME);
+        
+        if (appFolderId != nullptr) {
+            Serial.println("\n\nFiled created with this app:");
+            driveList.printList();
+        }
+        else {
+            Serial.println("Folder APP not present. Now it will be created.");
+            myDrive.createAppFolder(APP_FOLDERNAME);
+        }
+    }
 
     // Update name of the data file 
     snprintf(dataFileName, MAX_NAME_LEN, "%04d%02d%02d.txt", timeinfo.tm_year+1900, timeinfo.tm_mon+1, timeinfo.tm_mday );
@@ -173,7 +173,7 @@ void appendMeasurement(){
             (int)temperature, (int)(temperature * 100)%100,
             (int)pressure, (int)(pressure * 100)%100);
     
-        File file = fileSystem.open(path, FILE_APPEND);
+        File file = fileSystem.open(path, "a");
         file.println(dataBuf);
         file.close();
         Serial.print(F("\nAppend new data to file: "));
@@ -240,13 +240,6 @@ void uploadToDrive(){
 
 void createDayFile(){
     // Create a file for each different day
-    Serial.print("Filesystem free bytes: ");
-#ifdef ESP32
-    Serial.println(fileSystem.freeBytes());
-#elif defined(ESP8266)
-    Serial.println(fileSystem.totalBytes() - fileSystem.usedBytes() );
-#endif
-    
     char path[10 + MAX_NAME_LEN];
     snprintf(path, 30, "%s/%s%c", dataFolderName, dataFileName, '\0' );
 
@@ -255,7 +248,7 @@ void createDayFile(){
     }
 
     // Storage of a complete day data need at least 32Kb  (one measure once a minute)    
-    File dataFile =  fileSystem.open(path, FILE_WRITE);
+    File dataFile =  fileSystem.open(path, "w");
     if (!dataFile) {
         Serial.print(F("There was an error opening the file for writing - "));
         Serial.println(path);
@@ -276,7 +269,7 @@ void startFilesystem(){
   #endif
 
     if (fsOK){
-        File root = fileSystem.open("/");
+        File root = fileSystem.open("/", "r");
         File file = root.openNextFile();
         while (file){
             const char* fileName = file.name();
@@ -304,16 +297,15 @@ void startWiFi(){
     Serial.print("\nConnected! IP address: ");
     Serial.println(WiFi.localIP());
 
-    WiFi.setHostname(hostname);
-    MDNS.begin(hostname);
-    Serial.printf("Open http://%s.local/edit to edit or upload files\n", hostname);
-
-     // Set timezone and NTP servers
 #ifdef ESP8266
+    WiFi.hostname(hostname);  
     configTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
 #elif defined(ESP32) 
+    WiFi.setHostname(hostname);
     configTzTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
-#endif
+#endif 
+    MDNS.begin(hostname);
+    Serial.printf("Open http://%s.local/edit to edit or upload files\n", hostname);
 }
 
 void startBMP280(){
@@ -365,3 +357,4 @@ void printHeapStats(){
     Serial.printf("Free heap: %5d - Max block: %5d\n", free, max);
 #endif
 }
+
