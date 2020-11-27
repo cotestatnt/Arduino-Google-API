@@ -41,9 +41,9 @@ You can still easily upload all necessary files, but one by one with the provide
 
 ### Features
 + Authorize application for the allowed scopes
++ Save and refresh access token (local filesystem )
 
 GoogleDriveAPI Class 
-+ Save and refresh access token (local filesystem )
 + Create folders on Google Drive
 + Upload files on Google Drive
 + Update existing files on Google Drive
@@ -53,7 +53,7 @@ GoogleGmailAPI Class
 + Get list of unread messages
 + Read metadata of message
 + Read message body (snippet or full text)
-+ Send messagre to specific address
++ Send message to specific address
 
 ### To do
 + Add support for Calendar API
