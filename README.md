@@ -3,12 +3,12 @@
 ### Introduction
 With **GoogleAPI Arduino library**, you can easily authenticate your Espressif (ESP8266 and ESP32) device as OAuth 2.0 client without user interaction except for the first time when your application must be authorized in order to provide the user's consent.
 
+Note that users will be warned about "unverified App" unless you submit to Google a request for verification, if you require). 
+You can skip for testing purpose or if you don't need to redistribute: just click on *advanced* and then go to *---your app name---(unsafe)*.
+
 The first step is enable all the required APIs (Drive, Gmail, Calendar etc etc), then you can edit or create a new Project and set-up credentials in order to abtain a valid **Client ID, Client Secret, API key**. You have to define also wich [scope](https://developers.google.com/identity/protocols/oauth2/scopes) your application will be able to manage.
 Follow instructions provided in [API Console Help](https://support.google.com/googleapi/answer/7037264) for detailed instructions and How-To.
 To create your project and credentials visit the page [Google API Console](https://console.developers.google.com/apis/credentials)
-
-Note that you will be warned about "unverified App". Just click on *advanced* and then go to *---your app name---(unsafe)*.
-(If you need, you can send a verification request to Google)
 
 ![Google API credentials](/credentials1.png)
 
