@@ -1,5 +1,6 @@
 # Arduino-Google-API
 
+### Introduction
 With **GoogleAPI Arduino library**, you can easily authenticate your Espressif (ESP8266 and ESP32) device as OAuth 2.0 client without user interaction except for the first time when your application must be authorized in order to provide the user's consent.
 
 Note that you will be warned about "unverified App". Just click on *advanced* and then go to *---your app name---(unsafe)*.
@@ -35,3 +36,32 @@ When you choice the board, set properly the partition scheme if necessary. Ex: f
 With ESP32 the best filesystem for me is FFat (Fast FAT), but I was not able to find a working equivalent plugin up to now.
 You can still easily upload all necessary files, but one by one with the provided webserver built-in editor http://espfs.local/edit or use SPIFFS (slower and without folder support).
 ![built-in edit page](/editor.png)
+
+
+
+### Features
++ Authorize application for the allowed scopes
+
+GoogleDriveAPI Class 
++ Save and refresh access token (local filesystem )
++ Create folders on Google Drive
++ Upload files on Google Drive
++ Update existing files on Google Drive
++ Search for a specific file or folder
+
+GoogleGmailAPI Class
++ Get list of unread messages
++ Read metadata of message
++ Read message body (snippet or full text)
++ Send messagre to specific address
+
+### To do
++ Add support for Calendar API
++ Download files (Google Drive API)
++ Set metadata for message (Gmail API)
+
+### Supported boards
+The library works with the ESP8266 and ESP32 chipset.
+
+
++ 1.0.0   Initial version
