@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Google API token helper</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" crossorigin="anonymous">
+
+  </head>
+  
+  <body>
+    <div class="container">
+      <br><br>
+      <div class="alert alert-primary" role="alert">
+        The GoogleAPI Arduino library, will authenticate your device as <b>Web Application</b> as OAuth 2.0 client without interaction except the first time when your application must be authorized 
+        with the user's consent. <br>Note that you will be warned about "unverified App";. Just click on <b>advanced</b> and then <b>go to -your app name-(unsafe)</b>. 
+        <br>(If you need, you can send a verification request to Google)<br><br>
+        Enable the required APIs (Drive, Gmail, Calendar etc etc), edit or create a new Project, and set-up credentials in order to abtain a valid <b>Client ID, Client Secret, API key and application Scopes.</b><br>
+        Follow instructions provided here<a href='https://support.google.com/googleapi/answer/7037264?hl=en&ref_topic=7013279'> API Console Help</a> for detailed instructions and How-To.</a>
+        <br><br>Create your project and credentials at this page "<a href=https://console.developers.google.com/apis/credentials> Google API Console</a>"<br>
+      </div>
+      
+      <div class="input-group mb-3">
+        <div class="input-group-prepend"> <span class="input-group-text" id="clientid">Client ID</span> </div>
+        <input type="text" id="client_id" class="form-control" placeholder="123456789012-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com" aria-describedby="clientid">
+      </div>
+      
+      <div class="input-group mb-3">
+        <div class="input-group-prepend"> <span class="input-group-text" id="clientsecret">Client Secret</span> </div>
+        <input type="text" id="client_secret" class="form-control" placeholder="xxxxxxxxxxxxxxxxxxxxxxxx" aria-describedby="clientsecret">
+      </div>
+      
+      <div class="input-group mb-3">
+        <br><div class="input-group-append"> <span class="input-group-text" id="clientapi">API Key</span> </div>
+        <input type="text" id="client_api" class="form-control" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" aria-describedby="clientapi">
+      </div>
+      
+      <div class="input-group mb-3">
+        <br><div class="input-group-append"> <span class="input-group-text" id="clientscope">Client Scope</span> </div>
+        <input type="text" id="client_scope" class="form-control" placeholder="https://mail.google.com/ https://www.googleapis.com/auth/gmail.modify" aria-describedby="clientscope">
+      </div>
+        
+      <div id="json_loaded" style="text-align:right; font-size: small;"></div>
+      <br><br>
+      
+      <div class="alert alert-primary" role="alert">
+        Click on next link for obatin an authorization code. <br>
+        <b>Don't click the blue button on that page, just copy to clipboard the authorization code and paste in the input box below</b>
+      </div>
+      <div id ='exchange_link' style="text-align:right"> <a href="https://accounts.google.com/o/oauth2/v2/auth" target="_blank">Get authorization code!</a></div>
+      
+      <br><br>
+      <div class="input-group mb-3">
+        <br><div class="input-group-append"> <span class="input-group-text" id="authcode">Authorization Code</span> </div>
+        <input type="text" id="auth_code" class="form-control" placeholder="Paste authorization code here..." aria-describedby="authcode">
+      </div>
+      
+      Then click button "Exchange authorization code for tokens". 
+      <br>You should get a valid access token and refresh token.
+      <br>The authorization procedure ended, since now your application can automatically renew the access token when needed (once a hour).
+      
+      <br><br>
+      <button type="button" id="getTokenButton" class="btn btn-primary btn-lg btn-block" onclick="getTokens()">Exchange authorization code for tokens</button>
+      <br><br>
+      
+      <form>
+        <div class="form-group">
+          <label for="exampleFormControlTextarea1">Copy to json file this text</label>
+          <textarea class="form-control" id="saveJson" rows="10" readonly></textarea>
+        </div>
+      </form>
+      
+      <div id="save-json" style="display:none">
+        <div id="save-instruction"></div><br>
+        <div class="input-group mb-3">
+          <br><div class="input-group-append"> <span class="input-group-text" id="jsonfilename">Json Filename</span> </div>
+          <input type="text" id="json_filename" class="form-control" placeholder="yourjsonname.json" aria-describedby="jsonfilename">
+        </div><br>
+        <button type="button" id="saveJsonButton" class="btn btn-primary btn-lg btn-block" onclick="sendJSON()">Upload as file to ESP</button><br>
+      </div>
+      
+      <hr align="left" size="1" width="100%" noshade>
+    </div>
+
+    <script type="text/javascript">
+    
+      var url = new URL(window.location.href);
+      var jsonFile = url.searchParams.get("json");
+      
+      // Client ID and API key from the Developer Console
+      var CLIENT_ID;
+      var API_KEY;
+      // Authorization scopes required by the API; multiple scopes can be included, separated by spaces.
+      var SCOPES;
+      // Array of API discovery doc URLs for APIs used by the quickstart
+      var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
+    
+      async function fetchJson(url, options) {
+        try {
+          let res = await fetch(url, options);
+          return await res.json();
+        } catch (error) {
+            console.log(error);
+        }
+      }
+      
+      async function parseJson() {
+        
+        // load configuration json
+        if(jsonFile){
+          let json = await fetchJson('/' + jsonFile, null );
+          CLIENT_ID = json.client_id;
+          API_KEY = json.api_key;
+          SCOPES = json.scope;
+          console.log(CLIENT_ID);
+          console.log(json.client_secret);
+          console.log(SCOPES);
+          console.log(API_KEY);
+          document.getElementById("exchange_link").innerHTML = '<a href="https://accounts.google.com/o/oauth2/v2/auth?client_id=' +
+                                                                CLIENT_ID + '&redirect_uri=https://developers.google.com/oauthplayground&response_type=code&scope=' +
+                                                                SCOPES + '&access_type=offline&prompt=consent" target="_blank">Get authorization code!</a>';
+          document.getElementById("client_id").value = CLIENT_ID;
+          document.getElementById("client_api").value = API_KEY;
+          document.getElementById("client_scope").value = SCOPES;
+          document.getElementById("client_secret").value = json.client_secret;
+          document.getElementById("json_loaded").innerHTML = "Data loaded from <b>" + url + "</b>";
+          document.getElementById("json_filename").value = jsonFile;
+        }
+        else{
+          alert("You have'nt provided as parameter a json file with valid client ID,\n API key and scopes!" +
+                "\nExample: http://esp32fs.local/token.htm?json=gmail.json" +
+                "\n\nYou can create later, but first fill the input box with necessary data.");
+        }
+      }
+
+      parseJson();
+      
+      
+      async function getTokens(){
+        document.getElementById("getTokenButton").innerHTML = "Wait response from google";
+        let code = document.getElementById("auth_code").value;
+        let secret =  document.getElementById("client_secret").value;
+        
+        var payload = 
+            '{"client_id": "'   + CLIENT_ID + '",\n' +
+            '"client_secret": "'+ secret    + '",\n' +
+            '"grant_type": "authorization_code",\n' +
+            '"redirect_uri": "https://developers.google.com/oauthplayground",\n' +
+            '"code": "' + code + '"}';
+        
+        console.log(payload);
+        
+        var myHeaders = new Headers();
+        myHeaders.append('Access-Control-Allow-Origin', 'http://esp32fs.local:80');
+        myHeaders.append('Access-Control-Allow-Credentials', 'true');
+        myHeaders.append("Content-Type", "application/json");
+        
+        var requestOptions = {
+          method: 'POST',
+          mode: 'cors',
+          headers: myHeaders,
+          body: payload,
+          redirect: 'follow'
+        };
+        
+        const proxyurl = "https://cors-anywhere.herokuapp.com/";
+        const url_g = "https://oauth2.googleapis.com/token";
+        
+        let json = await fetchJson(proxyurl + url_g, requestOptions);
+        console.log(json);
+        
+        document.getElementById("getTokenButton").innerHTML = "Done!";
+        let text =
+            '{\n  "client_id": "'   + CLIENT_ID + '",' +
+            '\n  "client_secret": "'+ secret    + '",' +
+            '\n  "api_key": "'      + API_KEY   + '",' +
+            '\n  "scope": "'        + SCOPES    + '",' +
+            '\n  "refresh_token": "'+ json.refresh_token + '",' +
+            '\n  "access_token": "' + json.access_token  + '"\n}';
+
+        document.getElementById("saveJson").value = text;
+        var x = document.getElementById("save-json");
+        if (x.style.display === "none") 
+          x.style.display = "block";
+        else 
+          x.style.display = "none";
+        document.getElementById("save-instruction").innerHTML = "Now you can save the result f authorization flow as json file directly to ESP flash memory \n" + 
+                                                             "Alternatively you can also create a new file to pass as configuration to GoogleAPI class, and paste the text."; 
+      }
+      
+      function sendJSON(){ 
+        var path = document.getElementById("json_filename").value;
+  		  var data = document.getElementById("saveJson").value;
+        console.log(data);
+        var myblob = new Blob([data], {
+            type: 'application/json'
+        });
+        
+  		  if (!path.startsWith("/")) 
+  		    path = "/" + path;
+  		    
+        var formData = new FormData();
+        formData.append("data", myblob, path);
+        
+        const options = {
+          method: 'POST',
+          body: formData,
+        };
+        
+        fetch('/edit', options)
+         .then(function(response) {
+            if (response.status !== 200) {
+              console.log('Looks like there was a problem. Status Code: ' +  response.status);
+              document.getElementById("save-instruction").innerHTML = 'Looks like there was a problem. Status Code: ' +  response.status;
+            }
+            
+            console.log("File uploaded");
+            document.getElementById("saveJsonButton").innerHTML = "File uploaded";
+          }
+        )
+        .catch(function(err) {
+          console.log('Fetch Error :-S', err);
+        });
+  		} 
+  		
+      
+      function copyToClipboard(button, element){
+        let me = document.getElementById(button);
+        me.addEventListener('click', function(e) {
+          e.preventDefault();
+          document.execCommand('copy', false, document.getElementById(element).select());
+        });
+      }
+
+    </script>
+  </body>
+</html>
