@@ -41,8 +41,8 @@ const char* ssid        =  "ssid";     // SSID WiFi network
 const char* password    =  "xxxx";     // Password  WiFi network       
 
 /* https://developers.google.com/identity/protocols/OAuth2ForDevices#creatingcred */
-const char* CLIENT_ID     =  "540365103211-6d2s2ne5v1eoapfss5t1iooo16gp5gk7.apps.googleusercontent.com";
-const char* CLIENT_SECRET =  "JqfXMOkBjleBr_4unmi4jEmS";
+const char* CLIENT_ID     =  "xxxxxxxxxxxx-6d2s2ne5v1eoapfxxxxxxxxxxxxx.apps.googleusercontent.com";
+const char* CLIENT_SECRET =  "xxxxxxxxxxxx-xxxxxxxxxxx";
 const char* SCOPES        =  "https://www.googleapis.com/auth/drive.file email profile";
 
 Ticker saveMeasure, updateGList;
