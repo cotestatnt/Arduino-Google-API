@@ -13,17 +13,19 @@ To create your project and credentials visit the page [Google API Console](https
 
 Client ID, Client Secret, API key and Scope can be created/defined **only once from the developer**, then user have to authorize the application in order to get a valid **access token** and a **refresh token** to renew the access token when expired.
 
-There are two ways to do it with this library:
+There are two ways with this library:
 * Authorize your application as TV and Limited Input using OAuth 2.0 endpoint for [TV and Limited-Input Device](https://developers.google.com/identity/protocols/oauth2/limited-input-device)
 * Authorize your application as Web application using OAuth 2.0 endpoint for [Web Server Applications](https://developers.google.com/identity/protocols/oauth2/web-server) (for this method you need also API key) 
 
-With the first choice, the user switches to a device with richer input capabilities, launches a web browser, navigates to the URL displayed and enters the code provided. The user can then grant (or deny) access to your application.
+With the first choice, the user switches to a device with richer input capabilities, launches a web browser, navigates to the URL [](http://www.google.com/device) and enters the code provided from application for example with an LCD or a serial terminal. The user can then grant (or deny) access to your application.
 This method allow only few [scopes](https://developers.google.com/identity/protocols/oauth2/limited-input-device#allowedscopes) for your application.
 
-The second choice, can be used for every scope you need, but a small webserver running in our device is necessary because we have to call Google APIs for tokens directly from device! Note that users will be warned about "unverified App" unless you submit to Google a request for verification, if you require). 
+The second choice, can be used for every scope you need, but a small webserver running in our device is necessary because we need to call Google APIs for tokens directly from device! Note that users will be warned about "unverified App" unless you submit to Google a request for verification, if you require). 
 You can skip for testing purpose or if you don't need to redistribute: just click on *advanced* and then go to *---your app name---(unsafe)*.
 
-In the examples provided with library, you will find a webserver that can load pages from flash memory. The flow is a little bit more complex and for your convenience, the provided *token.html* page can handle all necessary for you and also save the json configuration file. You can call it passing the configuration file as argument or without argument and write all necessary datas after.
+In the examples provided with library, you will find a webserver that can load pages from flash memory. The OAuth 2.0 for Web Server Applications flow is a little bit more complex and for your (or users) convenience, the provided *token.html* page can handle all necessary steps and also save the json configuration file in the ESP memory. 
+
+You can call it passing the configuration file as argument or without and write all necessary datas after.
 Ex: http://espfs.local/token.htm or http://espfs.local/token.htm?json=gmail.json or http://espfs.local/token.htm?json=gdrive.json and so on.
 At the end of procedure, configuration file will be updated or created if not present in filesystem.
 
@@ -31,10 +33,10 @@ At the end of procedure, configuration file will be updated or created if not pr
 
 N.B.
 Be carefull, this library needs a filesystem in order to store all necessary data, tokens and webserver pages.
-When you choice the board, set properly the partition scheme if necessary. Ex: for ESP8266 the best choice for me is LittleFS and you can use the convenient [Arduino IDE tool Arduino ESP8266 LittleFS Filesystem Uploader](https://github.com/earlephilhower/arduino-esp8266littlefs-plugin) in order to upload html webserver files alls in once.
+When you choice the board, set properly the partition scheme. Ex: for ESP8266 the best choice for me is LittleFS (the default with new core's versions) and you can use the [Arduino IDE tool Arduino ESP8266 LittleFS Filesystem Uploader](https://github.com/earlephilhower/arduino-esp8266littlefs-plugin) in order to upload html webserver files alls in once.
 
 With ESP32 the best filesystem for me is FFat (Fast FAT), but I was not able to find a working equivalent plugin up to now.
-You can still easily upload all necessary files, but one by one with the provided webserver built-in editor http://espfs.local/edit or use SPIFFS (slower and without folder support).
+You can still easily upload all necessary files, but one by one with the provided webserver built-in editor http://espfs.local/edit or use default SPIFFS (slower and without folder support).
 ![built-in edit page](/editor.png)
 
 
