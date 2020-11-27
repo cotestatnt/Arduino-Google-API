@@ -166,7 +166,7 @@ void appendMeasurement(){
     char path[10 + MAX_NAME_LEN];
     snprintf(path, 30, "%s/%s", dataFolderName, dataFileName );
     if(fileSystem.exists(path)){
-        getLocalTime(&timeinfo);
+        getUpdatedtime(0);
         char dataBuf[30];
         sprintf(dataBuf, "%02d:%02d:%02d; %d.%d; %d.%d",
             timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec,
