@@ -23,6 +23,10 @@ This method allow only few [scopes](https://developers.google.com/identity/proto
 The second choice, can be used for every scope you need, but a small webserver running in our device is necessary because we need to call Google APIs for tokens directly from device! Note that users will be warned about "unverified App" unless you submit to Google a request for verification, if you require). 
 You can skip for testing purpose or if you don't need to redistribute: just click on *advanced* and then go to *---your app name---(unsafe)*.
 
+**Note**
+As you can read in the Google documentation, for this second scenario it is necessary un authorized redirect URI as endpoints to which the OAuth 2.0 server can send responses.
+Unfortunately this must end with a public top-level domain (such as .com or .org), so your ESP webserver address will not be valid. If we don't own a public domain, the address "https://developers.google.com/oauthplayground" can be used to retrieve the authorization code and you have to add to the [Authorized redirect URIs](/endpoint.jpg) list in your Google Console.
+
 In the examples provided with library, you will find a webserver that can load pages from flash memory. The OAuth 2.0 for Web Server Applications flow is a little bit more complex and for your (or users) convenience, the provided *token.html* page can handle all necessary steps and also save the json configuration file in the ESP memory. 
 
 You can call it passing the configuration file as argument or without and write all necessary datas after.
@@ -30,6 +34,7 @@ Ex: http://espfs.local/token.htm or http://espfs.local/token.htm?json=gmail.json
 At the end of procedure, configuration file will be updated or created if not present in filesystem.
 
 ![Tokens Helper page](/token_helper.png)
+
 
 N.B.
 Be carefull, this library needs a filesystem in order to store all necessary data, tokens and webserver pages.
