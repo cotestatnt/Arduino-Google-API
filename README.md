@@ -50,6 +50,11 @@ You can still easily upload all necessary files, but one by one with the provide
 + Authorize application for the allowed scopes
 + Save and refresh access token (local filesystem )
 
+GoogleSheetAPI Class 
++ Create spreadsheet on Google Drive
++ Create sheets in a provided spreadsheet
++ Append rows to spreadsheet (formula supported)
+ 
 GoogleDriveAPI Class 
 + Create folders on Google Drive
 + Upload files on Google Drive
@@ -70,5 +75,7 @@ GoogleGmailAPI Class
 ### Supported boards
 The library works with the ESP8266 and ESP32 chipset.
 
-
++ 1.0.2   Added support for Google Sheet API
++ 1.0.1   Added support for gMail API
 + 1.0.0   Initial version
+
