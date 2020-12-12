@@ -20,12 +20,12 @@ There are two ways with this library:
 With the first choice, the user switches to a device with richer input capabilities, launches a web browser, navigates to the URL [](http://www.google.com/device) and enters the code provided from application for example with an LCD or a serial terminal. The user can then grant (or deny) access to your application.
 This method allow only few [scopes](https://developers.google.com/identity/protocols/oauth2/limited-input-device#allowedscopes) for your application.
 
-The second choice, can be used for every scope you need, but a small webserver running in our device is necessary because we need to call Google APIs for tokens directly from device! Note that users will be warned about "unverified App" unless you submit to Google a request for verification, if you require). 
+The second choice, **can be used for every scope** you need, but a small webserver running in our device is necessary because we need to call Google APIs for tokens directly from device as web service! Note that users will be warned about "unverified App" unless you submit to Google a request for verification, if you require). 
 You can skip for testing purpose or if you don't need to redistribute: just click on *advanced* and then go to *---your app name---(unsafe)*.
 
 **Note**
 As you can read in the Google documentation, for this second scenario it is necessary un authorized redirect URI as endpoints to which the OAuth 2.0 server can send responses.
-Unfortunately this must end with a public top-level domain (such as .com or .org), so your ESP webserver address will not be valid. If a public domain is not avalaible, the address "https://developers.google.com/oauthplayground" can be used to retrieve the authorization code and you have to add to the [Authorized redirect URIs](/endpoint.jpg) list in your Google Console.
+Unfortunately this must end with a public top-level domain (such as .com or .org), so your ESP .local webserver address will not be valid. If a public domain is not avalaible, the address "https://developers.google.com/oauthplayground" can be used to retrieve the authorization code so you have to add to the [Authorized redirect URIs](/endpoint.jpg) list in your Google Console.
 
 In the examples provided with library, you will find a webserver that can load pages from flash memory. The OAuth 2.0 for Web Server Applications flow is a little bit more complex and for your (or users) convenience, the provided *token.html* page can handle all necessary steps and also save the json configuration file in the ESP memory. 
 
