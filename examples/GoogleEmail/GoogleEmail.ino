@@ -59,23 +59,10 @@ void setup()
     // FILESYSTEM INIT
     startFilesystem();
 
-    // Add custom handler for webserver
-    server.on("/sendEmail", HTTP_GET, sendEmail);
-    // WEB SERVER INIT
-    startWebServer(); 
-
-    // Print some information about heap memory before use init the library
-    printHeapStats();
-
-    // Begin, after wait authorize if necessary (with 60s timeout)
+    // Scopes with "TV and limited input devices" don't include Gmail functionality, so here we assume that a valid
+    // configuration files created with "Web Server Application" flow was present in the ESP fylesystem.
     if( myGmail.begin()){
-		uint32_t timeout = millis();
-		while (myGmail.getState() != GoogleOAuth2::GOT_TOKEN){
-			// Wait for user authorization on https//www.google.come/device
-			delay(10000);
-			if(millis() - timeout > 60000) break;
-		}
-		
+        
 		// myGmail.getMailList("cotestatnt@yahoo.com", true, 10);  // Get last 10 unread messages sent from provided address
 		myGmail.getMailList(nullptr, true, 10);      // Get last 10 unread messages
 		Serial.println(F("Unreaded email: "));
@@ -103,10 +90,21 @@ void setup()
 			Serial.println(F("--------------End of email-------------"));
 		}
 	}
+
+    if(myGmail.getState() == GoogleOAuth2::INVALID){
+        Serial.println(F("\n\nGoogle says that your client is NOT VALID!\nCheck configuration file content.\n")); 
+    }
+        
+   
     // Sync time with NTP. Blocking, but with timeout (0 == no timeout)
     const char* nowTime = getNTPtime(5000);    
     Serial.print("Time: "); 
     Serial.println(nowTime); 
+
+    // Add custom handler for webserver
+    server.on("/sendEmail", HTTP_GET, sendEmail);
+    // WEB SERVER INIT
+    startWebServer(); 
 }
 
 
@@ -116,12 +114,6 @@ void loop()
 #ifndef ESP32
     MDNS.update();
 #endif
-
-    static uint32_t updateTime;
-    if(millis() - updateTime > 30000){
-        updateTime = millis();
-        printHeapStats();
-    }
 }
 
 
@@ -158,15 +150,15 @@ void sendEmail()
 void startFilesystem()
 {
   // FILESYSTEM INIT
-  #ifdef ESP8266
+#ifdef ESP8266
     fileSystemConfig.setAutoFormat(true);
     fileSystem.setConfig(fileSystemConfig);
     fsOK = fileSystem.begin();
   
-  #elif defined(ESP32) 
+#elif defined(ESP32) 
     //fileSystem.format();
     fsOK = fileSystem.begin(FORMAT_IF_FAILED);
-  #endif
+#endif
 
     if (fsOK){
         File root = fileSystem.open("/", "r");
@@ -230,14 +222,4 @@ const char * getNTPtime(const uint32_t timeout)
 
     strftime (buffer, 40, "%A, %d/%m/%Y %H:%M:%S", &timeinfo);
     return (const char*) buffer;
-}
-
-void printHeapStats(){
-#ifdef ESP32
-    Serial.printf("\nTotal free: %6d - Max block: %6d\n", heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0));
-#elif defined(ESP8266)
-    uint32_t free; uint16_t max; uint8_t frag; 
-    ESP.getHeapStats(&free, &max, &frag); 
-    Serial.printf("\nTotal free: %5d - Max block: %5d\n", free, max);
-#endif
 }

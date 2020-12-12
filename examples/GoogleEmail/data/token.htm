@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" crossorigin="anonymous">
 
   </head>
-  
   <body>
     <div class="container">
       <br><br>
@@ -22,22 +21,22 @@
       
       <div class="input-group mb-3">
         <div class="input-group-prepend"> <span class="input-group-text" id="clientid">Client ID</span> </div>
-        <input type="text" id="client_id" class="form-control" placeholder="123456789012-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com" aria-describedby="clientid">
+        <input type="text" id="client_id" oninput="updateLink()" class="form-control" placeholder="123456789012-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com" aria-describedby="clientid">
       </div>
       
       <div class="input-group mb-3">
         <div class="input-group-prepend"> <span class="input-group-text" id="clientsecret">Client Secret</span> </div>
-        <input type="text" id="client_secret" class="form-control" placeholder="xxxxxxxxxxxxxxxxxxxxxxxx" aria-describedby="clientsecret">
+        <input type="text" id="client_secret" oninput="updateLink()" class="form-control" placeholder="xxxxxxxxxxxxxxxxxxxxxxxx" aria-describedby="clientsecret">
       </div>
       
       <div class="input-group mb-3">
         <br><div class="input-group-append"> <span class="input-group-text" id="clientapi">API Key</span> </div>
-        <input type="text" id="client_api" class="form-control" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" aria-describedby="clientapi">
+        <input type="text" id="client_api" oninput="updateLink()" class="form-control" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" aria-describedby="clientapi">
       </div>
       
       <div class="input-group mb-3">
         <br><div class="input-group-append"> <span class="input-group-text" id="clientscope">Client Scope</span> </div>
-        <input type="text" id="client_scope" class="form-control" placeholder="https://mail.google.com/ https://www.googleapis.com/auth/gmail.modify" aria-describedby="clientscope">
+        <input type="text" id="client_scope" oninput="updateLink()" class="form-control" placeholder="https://mail.google.com/ https://www.googleapis.com/auth/gmail.modify" aria-describedby="clientscope">
       </div>
         
       <div id="json_loaded" style="text-align:right; font-size: small;"></div>
@@ -75,8 +74,12 @@
         <div class="input-group mb-3">
           <br><div class="input-group-append"> <span class="input-group-text" id="jsonfilename">Json Filename</span> </div>
           <input type="text" id="json_filename" class="form-control" placeholder="yourjsonname.json" aria-describedby="jsonfilename">
-        </div><br>
-        <button type="button" id="saveJsonButton" class="btn btn-primary btn-lg btn-block" onclick="sendJSON()">Upload as file to ESP</button><br>
+        </div>
+        <div id="fileLink"></div>
+        <br>
+        
+        <button type="button" id="saveJsonButton" class="btn btn-primary btn-lg btn-block" onclick="sendJSON()">Upload file to ESP</button><br>
+
       </div>
       
       <hr align="left" size="1" width="100%" noshade>
@@ -94,6 +97,14 @@
       var SCOPES;
       // Array of API discovery doc URLs for APIs used by the quickstart
       var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
+      
+      function updateLink(){
+        CLIENT_ID = document.getElementById("client_id").value ;
+        SCOPES = document.getElementById("client_scope").value ;
+        document.getElementById("exchange_link").innerHTML = '<a href="https://accounts.google.com/o/oauth2/v2/auth?client_id=' +
+                                                                CLIENT_ID + '&redirect_uri=https://developers.google.com/oauthplayground&response_type=code&scope=' +
+                                                                SCOPES + '&access_type=offline&prompt=consent" target="_blank">Get authorization code!</a>';
+      }
     
       async function fetchJson(url, options) {
         try {
@@ -127,7 +138,7 @@
           document.getElementById("json_filename").value = jsonFile;
         }
         else{
-          alert("You have'nt provided as parameter a json file with valid client ID,\n API key and scopes!" +
+          alert("You have not provided as parameter a json file with valid client ID,\n API key and scopes!" +
                 "\nExample: http://esp32fs.local/token.htm?json=gmail.json" +
                 "\n\nYou can create later, but first fill the input box with necessary data.");
         }
@@ -171,12 +182,12 @@
         
         document.getElementById("getTokenButton").innerHTML = "Done!";
         let text =
-            '{\n  "client_id": "'   + CLIENT_ID + '",' +
-            '\n  "client_secret": "'+ secret    + '",' +
-            '\n  "api_key": "'      + API_KEY   + '",' +
-            '\n  "scope": "'        + SCOPES    + '",' +
-            '\n  "refresh_token": "'+ json.refresh_token + '",' +
-            '\n  "access_token": "' + json.access_token  + '"\n}';
+            '{\n  "client_id": "'   + CLIENT_ID + '",  ' +
+            '\n  "client_secret": "'+ secret    + '",  ' +
+            '\n  "api_key": "'      + API_KEY   + '",  ' +
+            '\n  "scope": "'        + SCOPES    + '",  ' +
+            '\n  "refresh_token": "'+ json.refresh_token + '",  ' +
+            '\n  "access_token": "' + json.access_token  + '    "\n\n}';
 
         document.getElementById("saveJson").value = text;
         var x = document.getElementById("save-json");
@@ -184,7 +195,7 @@
           x.style.display = "block";
         else 
           x.style.display = "none";
-        document.getElementById("save-instruction").innerHTML = "Now you can save the result f authorization flow as json file directly to ESP flash memory \n" + 
+        document.getElementById("save-instruction").innerHTML = "Now you can save the result of authorization flow as json file directly to ESP flash memory \n" + 
                                                              "Alternatively you can also create a new file to pass as configuration to GoogleAPI class, and paste the text."; 
       }
       
@@ -216,6 +227,7 @@
             
             console.log("File uploaded");
             document.getElementById("saveJsonButton").innerHTML = "File uploaded";
+            document.getElementById("fileLink").innerHTML = "Check the content of file <a href='http://espfs.local/" + path + "'> " + path + "</a>";
           }
         )
         .catch(function(err) {
