@@ -7,11 +7,9 @@
 
 #define API_HOST "www.googleapis.com"
 
-
 class GoogleDriveAPI : public GoogleOAuth2
 {
-    friend void __DriveCallback(uint8_t filter, uint8_t level, const char *name, const char *value, void *cbObj);
-    
+
 public:
 
     GoogleDriveAPI (fs::FS *fs );
@@ -23,23 +21,31 @@ public:
     const char*     getFileId(int index);
     const char*     getFileId(const char* name);
 
-    // return the google ID  for files or folder
-    const char*     createAppFolder(const char *folderName);
-    const char*     searchFile(const char *fileName);
-    void            updateList();
+    // Methods to store and retrieve app filder id (if files are organized by folder)    
+    inline void  setAppFolderId(const char* folderId) { m_appFolderId = strdup(folderId); }
+    inline void  setAppFolderId(String folderId) { setAppFolderId(folderId.c_str()); }
+    inline char* getAppFolderId(){ return m_appFolderId; }
+
+    // return the google ID  for files or folder    
+    char*   createFolder(const char *folderName, const char *parent, bool isName = false);
+    String  searchFile(const char *fileName,  const char* parentId = nullptr);
+    inline String  searchFile(String& fileName,  String& parentId) { return searchFile(fileName.c_str(), parentId.c_str()); }
+
+    bool    updateFileList();
+    void    printFileList();
 
     // Upload or update file
-    const char*     uploadFile(const char* path, const char* folderId, bool isUpdate = true);
+    char*   uploadFile(const char* path, const char* folderId, bool isUpdate = true);
+    char*   uploadFile(String &path, String &folderId, bool isUpdate = true); 
 
 protected:
-    JSONStreamingParser _parser_drive;
-    void parseDriveJson(uint8_t filter, uint8_t level, const char *name, const char *value);
-   
-private:
-    const char*     appFolderId;
-    GoogleFilelist  *_filelist;
+    enum {WAIT_FILE, SAVE_ID, SAVE_NAME, SAVE_TYPE, SEARCH_ID, UPLOAD_ID, NEW_FILE};
+
+    GoogleFilelist* m_filelist;
+    char* m_appFolderId = (char*)"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"; // 33 random chars
     bool sendMultipartFormData(const char* path, const char* filename, const char* id, bool update = false);
-    const char* readClient(const char* funcName, const char* key);
+    String readClient(const int expected, GoogleFile* gFile = nullptr );
+    String parseLine(String &line, const int filter, GoogleFile* gFile );
 };
 
 #endif

@@ -1,110 +1,58 @@
 #include "GoogleOAuth2.h"
 
-// external parser callback, just calls the internal one
-void __JSONCallback(uint8_t filter, uint8_t level, const char *name, const char *value, void *cbObj)
-{
-	// call GoogleOAuth2 internal handler
-	((GoogleOAuth2 *)cbObj)->parseJson(filter, level, name, value);
-}
-
-
-// External function for custom json parse (will receive class pointer as parameter)
-void GoogleOAuth2::parseJson(uint8_t filter, uint8_t level, const char *name, const char *value)
-{
-    size_t len = strlen(value);
-    if(strstr(name, "expires_in")) 
-    {
-        long _time = strtol(value, NULL, 10);
-        expires_at_ms = 1000 * _time + millis();  
-        Serial.print(_time);
-        Serial.println(" seconds before token will expire.");
-        _parser.setOutput(value, len);
-    }
-
-    if(strstr(name, "access_token")) 
-    {               
-        if(strcmp( _parser.filter.keyword, "noWrite") != 0)
-            writeParam("access_token", value);
-        _parser.setOutput(value, len);
-    }
-
-    if(strstr(name, "refresh_token")) 
-    {              
-        if(strcmp( _parser.filter.keyword, "noWrite") != 0)
-            writeParam("refresh_token", value);
-        _parser.setOutput(value, len);
-    }
-
-    if(strstr(name, "user_code")) 
-    {       
-        char buffer[12];
-        PString code(buffer, sizeof(buffer));
-        if(len < 11){
-            code = value;
-            for(uint8_t i=0; i< 12-len; i++)
-                code += ' ';
-        }
-        else
-            code = value;
-        
-        if(strcmp( _parser.filter.keyword, "noWrite") != 0)       
-            writeParam("user_code", code);
-        _parser.setOutput(code, strlen(code));
-    }
-
-    if(strstr(name, "device_code")) 
-    {      
-        if(strcmp( _parser.filter.keyword, "noWrite") != 0)        
-            writeParam("device_code", value);
-        _parser.setOutput(value, len);
-    }
-
-    if(strstr(name, "verification_url")) 
-    {   
-        if(strcmp( _parser.filter.keyword, "noWrite") != 0)          
-            writeParam("verification_url", value);
-        _parser.setOutput(value, len);
-    }
-
-    if(!strcmp(name, "error")){
-        Serial.print("\nError: ");
-        Serial.println(value);
-        _parser.setOutput("error", strlen("error"));
-    }
-
-}
-
+static const char digicert[] PROGMEM = R"EOF(
+-----BEGIN CERTIFICATE-----
+MIIDujCCAqKgAwIBAgILBAAAAAABD4Ym5g0wDQYJKoZIhvcNAQEFBQAwTDEgMB4G
+A1UECxMXR2xvYmFsU2lnbiBSb290IENBIC0gUjIxEzARBgNVBAoTCkdsb2JhbFNp
+Z24xEzARBgNVBAMTCkdsb2JhbFNpZ24wHhcNMDYxMjE1MDgwMDAwWhcNMjExMjE1
+MDgwMDAwWjBMMSAwHgYDVQQLExdHbG9iYWxTaWduIFJvb3QgQ0EgLSBSMjETMBEG
+A1UEChMKR2xvYmFsU2lnbjETMBEGA1UEAxMKR2xvYmFsU2lnbjCCASIwDQYJKoZI
+hvcNAQEBBQADggEPADCCAQoCggEBAKbPJA6+Lm8omUVCxKs+IVSbC9N/hHD6ErPL
+v4dfxn+G07IwXNb9rfF73OX4YJYJkhD10FPe+3t+c4isUoh7SqbKSaZeqKeMWhG8
+eoLrvozps6yWJQeXSpkqBy+0Hne/ig+1AnwblrjFuTosvNYSuetZfeLQBoZfXklq
+tTleiDTsvHgMCJiEbKjNS7SgfQx5TfC4LcshytVsW33hoCmEofnTlEnLJGKRILzd
+C9XZzPnqJworc5HGnRusyMvo4KD0L5CLTfuwNhv2GXqF4G3yYROIXJ/gkwpRl4pa
+zq+r1feqCapgvdzZX99yqWATXgAByUr6P6TqBwMhAo6CygPCm48CAwEAAaOBnDCB
+mTAOBgNVHQ8BAf8EBAMCAQYwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQUm+IH
+V2ccHsBqBt5ZtJot39wZhi4wNgYDVR0fBC8wLTAroCmgJ4YlaHR0cDovL2NybC5n
+bG9iYWxzaWduLm5ldC9yb290LXIyLmNybDAfBgNVHSMEGDAWgBSb4gdXZxwewGoG
+3lm0mi3f3BmGLjANBgkqhkiG9w0BAQUFAAOCAQEAmYFThxxol4aR7OBKuEQLq4Gs
+J0/WwbgcQ3izDJr86iw8bmEbTUsp9Z8FHSbBuOmDAGJFtqkIk7mpM0sYmsL4h4hO
+291xNBrBVNpGP+DTKqttVCL1OmLNIG+6KYnX3ZHu01yiPqFbQfXf5WRDLenVOavS
+ot+3i9DAgBkcRcAtjOj4LaR0VknFBbVPFd5uRHg5h6h+u/N5GJG79G+dwfCMNYxd
+AfvDbbnvRG15RjF+Cv6pgsH/76tuIMRQyV+dTZsXjAzlAcmgQWpzU/qlULRuJQ/7
+TBj0/VLZjmmx6BEP3ojY+x1J96relc8geMJgEtslQIxq/H5COEBkEveegeGTLg==
+-----END CERTIFICATE-----
+)EOF";
 
 GoogleOAuth2::GoogleOAuth2(fs::FS *fs) 
 {
     functionLog() ;
-    _filesystem = fs;
-    _parser.setCallback(__JSONCallback, this);
-    _ggstate = INIT;
+    m_filesystem = fs;
+    m_ggstate = INIT;
 }
 
 
 GoogleOAuth2::GoogleOAuth2(fs::FS *fs, const char *configFile)
 {
     functionLog() ;
-    _filesystem = fs;
-    _configFile = configFile;
-    _parser.setCallback(__JSONCallback, this);
-    _ggstate = INIT;
+    m_filesystem = fs;
+    m_configFile = configFile;
+    m_ggstate = INIT;
 }
 
 
 bool GoogleOAuth2::begin(){
-    File file = _filesystem->open(_configFile, "r");    
+    File file = m_filesystem->open(m_configFile, "r");    
     if(!file || file.isDirectory()){       
         Serial.print(F("Failed to read configuration file"));
-        Serial.println(_configFile);
+        Serial.println(m_configFile);
         Serial.println(F("If you call begin() without parameter, a configuration file must be present in filesystem"));
         return false;
     }
-    const char *id = readParam("client_id");
-    const char *secret = readParam("client_secret");
-    const char *_scope =readParam("scope");
+    const char *id = readParam("client_id").c_str();
+    const char *secret = readParam("client_secret").c_str();
+    const char *_scope =readParam("scope").c_str();
     return begin(id, secret, _scope);
 }
 
@@ -112,46 +60,70 @@ bool GoogleOAuth2::begin(){
 bool GoogleOAuth2::begin(const char *id, const char *secret, const char *_scope)
 {
     functionLog() ;
-    expires_at_ms = 30000;
-	
+    m_expires_at_ms = 30000;
+
 #ifdef ESP8266 
-    ggclient.setInsecure();
-    ggclient.setBufferSizes(1024,1024);
+    //m_ggclient.setInsecure();
+
+    // Load root certificate from file is exists
+    if(m_filesystem->exists("/ca.cer") ){
+        Serial.println(F("Root cerfificate loaded from file /ca.cer"));
+        File file_cert = m_filesystem->open("/ca.cer", "r");
+        m_ggclient.loadCACert(file_cert);
+    } else {
+        m_ggclient.setCACert_P(digicert, sizeof(digicert));
+    }
+
+    m_ggclient.setSession(&m_session);
+    m_ggclient.setBufferSizes(TCP_MSS, TCP_MSS);
 #endif
 
     // Load confif file or create it if don't exist
-    if (loadConfig(id, secret, _scope)){
-
+    if (loadConfig(id, secret, _scope))
+    {
 		if (isAccessTokenValid())
 		{
-			_ggstate = GOT_TOKEN;
+			m_ggstate = GOT_TOKEN;
 			Serial.println(PSTR("\nAccess token valid"));
+            return true;
 		}
-		else if (refreshToken())
-			{
-				Serial.println(PSTR("\nAccess token refreshed"));
-				_ggstate = GOT_TOKEN;
-			}
-	} else 
+		else if (refreshToken(true))
+		{
+            Serial.println(PSTR("\nAccess token refreshed"));
+            m_ggstate = GOT_TOKEN;
+            return true;
+		}
+        
+	} 
+    else 
     {
         return false;
     }
 
-    if( _ggstate != GOT_TOKEN){
-        // No valid access token (is this the first time we authorize app?)
-        requestDeviceCode();
-        Serial.println(PSTR("\nNo valid access token founded. "));
-        _ggstate = REQUEST_AUTH;
+    if( m_ggstate != GOT_TOKEN)
+    {
+        // No valid access token (is this the first time we authorize app?)        
+        Serial.println(PSTR("\nNo valid access or refresh token found in config file."));		
+		if (requestDeviceCode()){
+            m_ggstate = REQUEST_AUTH; 
+            return true;
+        } 
+        else {
+            m_ggstate = INVALID;
+            return false;
+        }                
     }
-     return true;
+    // default value
+    return false;
 }
 
 
 bool GoogleOAuth2::loadConfig(const char *id, const char *secret, const char *_scope)
 {
     functionLog() ;
-    if(! _filesystem->exists(_configFile)){
-        File newfile = _filesystem->open(_configFile, "w");   
+    if(! m_filesystem->exists(m_configFile))
+    {
+        File newfile = m_filesystem->open(m_configFile, "w");   
         if (!newfile)
         {
             Serial.println(F("Failed to crete config file"));
@@ -166,19 +138,12 @@ bool GoogleOAuth2::loadConfig(const char *id, const char *secret, const char *_s
         return true;
     }
 
-    File file = _filesystem->open(_configFile, "r");
+    File file = m_filesystem->open(m_configFile, "r");
     if (!file)
     {
         Serial.println(F("Failed to open file"));
         return false;
     }
-
-    // Init json parser
-	_parser.reset();
-    readggClient( __func__ , "noWrite");
-    while(file.available()){
-        _parser.feed(file.read());
-    }    
 
 	return true;
 }
@@ -186,27 +151,25 @@ bool GoogleOAuth2::loadConfig(const char *id, const char *secret, const char *_s
 int GoogleOAuth2::getState()
 {
     functionLog() ;
-    if( _ggstate == GOT_TOKEN)
-        return _ggstate;
-
-    // No valid access token found, wait for user authorization
-    if(_ggstate == REQUEST_AUTH){
-        if (pollingAuthorize())
-        {
-            _ggstate = GOT_TOKEN;
-        }
+    if (m_ggstate == REQUEST_AUTH && pollingAuthorize()){
+        m_ggstate = GOT_TOKEN; 
+        Serial.println("Got token");
     }
-    return _ggstate;
+    return m_ggstate;
 }
 
 
 bool GoogleOAuth2::doConnection( const char *host ){
     functionLog() ;
-    
-    ggclient.setNoDelay(true);
-    ggclient.stop();
+    /*
+    if(m_ggclient.connected()){
+        m_ggclient.stop();
+    }
+    */
     serialLog(PSTR("\nStarting connection to server..."));
-    if (!ggclient.connect(host, PORT)) {
+
+    if (!m_ggclient.connect(host, PORT)) 
+    {
         serialLogln(PSTR(" failed!"));
         return false;
     }
@@ -216,139 +179,204 @@ bool GoogleOAuth2::doConnection( const char *host ){
 }
 
 
-const char* GoogleOAuth2::sendCommand(const char *const &rest, const char *const &host, const char *const &command,
+void GoogleOAuth2::sendCommand(const char *const &rest, const char *const &host, const char *const &command,
                                       const char *const &body, bool bearer = false)
 {
     functionLog() ;
 
-    if (!ggclient.connected()) // || (millis() - lastConnectTime > SERVER_TIMEOUT))
-        doConnection(host);
-
-    // token is still valid for less than 10s
-    long r_second = expires_at_ms - (long) millis();
-    serialLogln();
-    serialLog(r_second/1000);
-    serialLogln(" seconds before token will expire.");
-
-    if(r_second < 10000 && (strcmp(command, "/token") != 0)) 
-    {
-        serialLogln("Call refreshToken() from sendCommand()");
-		serialLogln(command);
-        delay(500);
-        expires_at_ms += 30000; // times for refreshing
-		refreshToken();
-    }
+    // Refresh token if necessary except if this is called from refreshToken()
+    if(strcmp(command, "/token") != 0) 
+        checkRefreshTime();
 
 #if DEBUG_MODE
     Serial.printf("\nINFO - HTTP request: %s%s HTTP/1.1\n", rest, command);
 #endif
 
-    ggclient.print(rest);
-    ggclient.print(command);
-    ggclient.print(" HTTP/1.1");
-    ggclient.print("\r\nHost: ");
-	ggclient.print(host);
-    ggclient.print("\r\nUser-Agent: ESP32");
-    ggclient.print("\r\nConnection: keep-alive");
-    ggclient.print("\r\nAccess-Control-Allow-Credentials: true");
-    ggclient.print("\r\nAccess-Control-Allow-Origin: "); 
- #ifdef ESP8266
-    const char* hostname =  WiFi.hostname().c_str();  
- #elif defined(ESP32) 
-    const char* hostname =  WiFi.getHostname();
- #endif
-    char* const _localhost = new char[strlen(hostname) + 14];
-    snprintf_P(_localhost, strlen(_localhost), PSTR("http://%s.local"), hostname);
-    ggclient.print(_localhost);
+    if (!m_ggclient.connected()) // || (millis() - lastConnectTime > SERVER_TIMEOUT))
+        if (!doConnection(host))
+            return ;
+    m_ggclient.print(rest);
+    m_ggclient.print(command);
+    m_ggclient.print(F(" HTTP/1.1"));
+    m_ggclient.print(F("\r\nHost: "));
+    m_ggclient.print(host);
+    //m_ggclient.print(F("\r\nUser-Agent: arduino-esp"));
+    //m_ggclient.print(F("\r\nConnection: keep-alive"));
+    m_ggclient.print(F("\r\nAccess-Control-Allow-Credentials: true"));
+    m_ggclient.print(F("\r\nAccess-Control-Allow-Origin: ")); 
+
+    char buffer[64];
+    PString outStr(buffer, sizeof(buffer));
+    outStr = F("http://");
+
+#ifdef ESP8266
+    outStr += WiFi.hostname().c_str();  
+#elif defined(ESP32) 
+    outStr += WiFi.getHostname();
+#endif
+    outStr += F(".local");
+    m_ggclient.print(outStr);
 
     // Add content headers if body is not null
     if(strlen(body)> 0)
-    {
-        size_t len = strlen_P(PSTR("\r\nContent-Type: application/json\r\nContent-Length: ")) + 5;  //max 99999bytes
-        char* headers = new char[len];
-        snprintf_P(headers, len, PSTR("\r\nContent-Type: application/json\r\nContent-Length: %d"), strlen(body));
-        ggclient.print(headers);
-        serialLogln(headers);
+    {   
+       outStr = F("\r\nContent-Type: application/json\r\nContent-Length: ");
+       outStr += strlen(body);
+       m_ggclient.print(outStr);
     }
     if (bearer) 
     {        
-        ggclient.print("\r\nAuthorization: Bearer ");
-        ggclient.print(readParam("access_token"));
+        m_ggclient.print(F("\r\nAuthorization: Bearer "));
+        m_ggclient.print(readParam("access_token"));
     }
-    ggclient.print("\r\n\r\n");
-	if(strlen(body)> 0) 
+    m_ggclient.print(F("\r\n\r\n"));
+    if(strlen(body)> 0) 
     {   
-		ggclient.print(body);
+        m_ggclient.print(body);
         serialLogln(body);
     }
-    return nullptr;
+    
 }
 
 
-void GoogleOAuth2::readggClient(const char* funcName, const char* key, bool keep_connection)
+String GoogleOAuth2::parseLine(String &line, const char *filter = nullptr) 
+{
+
+    /*
+    * The access token check request return expires_in seconds or error if not valid
+    * The refresh token request, will give the new access token
+    * The device code request, will give device_code and user_code
+    * The polling authorize request will give back access_token, refresh_token and expires_in
+    */
+
+    String value = "";
+    value.reserve(200);             // The max length for searched string is 200 (access_token)
+
+    value = getValue(line, "\"expires_in\": \"" );
+    if(value.length())  { 
+        long _time = value.toInt();
+        m_expires_at_ms = 1000 * _time + millis();  
+        Serial.print(_time);
+        Serial.println(" seconds before token will expire.");
+    }
+
+    value = getValue(line, "\"access_token\": \"" );
+    if(value.length()) { 
+        writeParam("access_token", value.c_str());
+        m_expires_at_ms = 3599000L; 
+    }
+
+    value = getValue(line, "\"refresh_token\": \"" );
+    if(value.length()) { 
+        writeParam("refresh_token", value.c_str());
+    }
+
+    value = getValue(line, "\"device_code\": \"" );
+    if(value.length()) {  
+        m_device_code = (char*)realloc( m_device_code, sizeof(char *) * (value.length()+1) );
+        strcpy( m_device_code , value.c_str());       
+    }
+
+    value = getValue(line, "\"user_code\": \"" );
+    if(value.length()) {  
+        m_user_code = (char*)realloc( m_user_code, sizeof(char *) * (value.length()+1) );
+        strcpy( m_user_code , value.c_str());       
+        return m_user_code;
+    }
+
+    value = getValue(line, "\"token_type\": \"" );
+    if(value.length()) {       
+        return value;
+    }
+
+    value = getValue(line, "\"error\": \"" );
+    if(value.length()) {  
+        String err = "error: ";
+        err += value;       
+        return err;
+    } 
+
+    return "";
+}
+
+
+const char* GoogleOAuth2::readggClient( bool keep_connection)
 {
     functionLog() ;
-    // Init HTTP stream parser
-	_parser.reset();
-    _parser.setSearchKey(funcName, key);
 
     // Skip headers
-    while (ggclient.connected()) {
-        static char old;
-        char ch = ggclient.read();
-        if (ch == '\n' && old == '\r') {
-            break;
+    while (m_ggclient.connected()) {
+        String line = m_ggclient.readStringUntil('\n');
+        if (line == "\r") {
+        // serialLogln(line);
+        break;
         }
-        old = ch;
     }
     // get body content
-    while (ggclient.available()) {
-        char c = ggclient.read();
-        _parser.feed(c);
-        serialLog((char)c);
-        yield();
-    }
+    String res;
+    res.reserve(200);
+    while (m_ggclient.available()) { 
+        String line = m_ggclient.readStringUntil('\n');
+        serialLogln(line);
+        res = parseLine( line);
+        
+        // value found in json response (skip all the remaining bytes)
+        if(res.length() > 0){
+            while (m_ggclient.available()) { 
+                m_ggclient.read(); 
+                yield();
+            }
+            m_ggclient.stop();
+            return res.c_str();
+        }
+        
+    }    
 
     // Speed up some steps (for example during authentication procedure or renew of access tokem)
     // Otherwise close connection and release memory 
     if(!keep_connection)
-        ggclient.stop();
+        m_ggclient.stop();
+    return res.c_str();
 }
 
+
+void GoogleOAuth2::checkRefreshTime(){
+    //functionLog() ;
+    long r_second = m_expires_at_ms - (long) millis();
+    serialLogln();
+    serialLog(r_second/1000);
+    serialLogln(" seconds before token will expire.");
+    if(r_second < 10 ) {
+        refreshToken();
+    }
+}
 
 bool GoogleOAuth2::isAccessTokenValid()
 {
     functionLog() ;
-    const char* access_token = readParam("access_token");
-    size_t len = strlen_P(PSTR("/tokeninfo?access_token=")) + strlen(access_token);
-    char* cmd = new char[len + 1];
-	snprintf_P(cmd, len+1, PSTR("/tokeninfo?access_token=%s"), access_token);
-
-    sendCommand("GET ", AUTH_HOST, cmd, "");
-    readggClient( __func__ , "access_token", true);
-    const char * res = _parser.getOutput();    
-    
-    if (res == nullptr)
+    String outStr = readParam("access_token");
+    if(outStr.length() < 128)
         return false;
+    outStr = ("/tokeninfo?access_token=");    
+    outStr += readParam("access_token");
     
-    if(strstr(res, "error"))
+    sendCommand("GET ", AUTH_HOST, outStr.c_str(), "");
+    String res = readggClient(true);	
+    if (res.indexOf("error") > -1){
+        Serial.println(res);
         return false;
-    
-    ggclient.stop();
+    }
     return true;
 }
 
 
-bool GoogleOAuth2::refreshToken()
+bool GoogleOAuth2::refreshToken( bool stopClient)
 {
     functionLog() ;
-    char buffer[350];
-    PString body(buffer, sizeof(buffer));
-
-    if(strlen(readParam("refresh_token")) == 0)
+    if(readParam("refresh_token").length() == 0)
         return false;
     
-    body =  F("{\"grant_type\":\"refresh_token\",\"client_id\":\"");
+    String body =  F("{\"grant_type\":\"refresh_token\",\"client_id\":\"");
     body += readParam("client_id");
     body += F("\",\"client_secret\":\"");
     body += readParam("client_secret");
@@ -356,14 +384,13 @@ bool GoogleOAuth2::refreshToken()
     body += readParam("refresh_token");
     body += F("\"}");    
 
-    sendCommand("POST ", AUTH_HOST, "/token", body, false);
-    readggClient( __func__ , "access_token", true);
-    //const char * res = _parser.getOutput();
-	const char* res = "ciao!";
-    if(strstr(res, "error"))
+    sendCommand("POST ", AUTH_HOST, "/token", body.c_str(), false);
+    String res = readggClient(stopClient);	
+    if (res.indexOf("error") > -1){
+        Serial.println(res);
+        m_ggstate = INVALID;
         return false;
-
-    ggclient.stop();
+    }
     return true;
 }
 
@@ -371,67 +398,64 @@ bool GoogleOAuth2::refreshToken()
 bool GoogleOAuth2::requestDeviceCode()
 {
     functionLog() ;
-
-    char buffer[200];
-    PString body(buffer, sizeof(buffer));
-
-    body =  F("{\"client_id\":\"");
+    String body =  F("{\"client_id\":\"");
     body += readParam("client_id");
     body += F("\",\"scope\":\"");
     body += readParam("scope");
     body += F("\"}");
 
-    sendCommand("POST ", AUTH_HOST, "/device/code", body);    
-    readggClient( __func__ , "device_code", true);
-    const char * res = _parser.getOutput();
-    if(strstr(res, "error"))
+    sendCommand("POST ", AUTH_HOST, "/device/code", body.c_str());    
+    String res = readggClient(true);	
+    if (res.indexOf(F("error")) > -1){
+        Serial.println(res);
         return false;
+    }
     return true;
+}
+
+
+const char* GoogleOAuth2::getUserCode(){
+    return m_user_code;
 }
 
 
 bool GoogleOAuth2::pollingAuthorize()
 {
     functionLog() ;
-    // Inform the user about pending authorization request
-    Serial.println(PSTR("\nApplication need to be authorized!"));
-    Serial.print(PSTR("Open with a browser the address < "));
-    Serial.print(readParam("verification_url"));
-    Serial.print(PSTR(" > and insert this confirmation code "));
-    Serial.println(readParam("user_code"));
 
     // Check if user has submitted the code    
-    char buffer[400];
-    PString body(buffer, sizeof(buffer));
-
-    body =  F("{\"client_id\":\"");
+    String body =  F("{\"client_id\":\"");
     body += readParam("client_id");
     body += F("\",\"client_secret\":\"");
     body += readParam("client_secret");
     body += F("\",\"device_code\":\"");
-    body += readParam("device_code");
+    body += m_device_code; //readParam("device_code");
     body += F("\",\"grant_type\":\"urn:ietf:params:oauth:grant-type:device_code\"}");
 
-    sendCommand("POST ", AUTH_HOST, "/token", body);
-    readggClient( __func__ , "polling");
-    const char * res = _parser.getOutput();
-    if(strstr(res, "error"))
-        return false;
+    sendCommand("POST ", AUTH_HOST, "/token", body.c_str());
+
+    String res = readggClient(true);
+    if (res.indexOf("Bearer") > -1){   
+        Serial.print("Token type ");   
+        Serial.println(res); 
+        m_ggclient.stop(); 
+        return true;
+    }
         
-    ggclient.stop();
-    return true;   
+    m_ggclient.stop();
+    return false;   
 }
 
 // Read a specific parameter from comnfig file
-const char * GoogleOAuth2::readParam(const char * keyword){
+const String GoogleOAuth2::readParam(const char * keyword) const{
     //functionLog() ;
-    #define BUF_LEN 256
-    char * buffer = new char[BUF_LEN+1];
+    String outStr = "";
+    outStr.reserve(256);
 
-    File file = _filesystem->open(_configFile, "r");    
+    File file = m_filesystem->open(m_configFile, "r");    
     if(!file || file.isDirectory()){       
         Serial.print(F("Failed to read file"));
-        Serial.println(_configFile);
+        Serial.println(m_configFile);
         return "";
     }
    
@@ -440,24 +464,13 @@ const char * GoogleOAuth2::readParam(const char * keyword){
             // "access_token": "nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
             // Skip 4 chars  ": "            
             file.read(); file.read();file.read(); file.read(); 
-            unsigned int i = 0;
-            while(file.available()){                
-                char ch = file.read();                
-                if(ch == '\"'){
-                  buffer[i] = '\0' ;
-                  break;
-                }
-                if(i<BUF_LEN) {
-                    buffer[i++] = ch;   // add char to buffer
-                }
-                else {
-                    file.close(); 
-                    return "";          // buffer too small 
-                }       
+            if(file.available()){                
+                outStr = file.readStringUntil('\"');                
             }            
-            file.close();       
-            return buffer;
-        }           
+            file.close();     
+            return outStr;
+        }  
+        return "";         
     }
     file.close();
     return "";
@@ -468,10 +481,10 @@ bool GoogleOAuth2::writeParam(const char * keyword, const char * value){
     functionLog() ;
 
     // Open file for writing
-    File file = _filesystem->open(_configFile, "r+"); 
+    File file = m_filesystem->open(m_configFile, "r+"); 
     if(!file || file.isDirectory()){       
         Serial.print(F("Failed to open file "));
-        Serial.println(_configFile);
+        Serial.println(m_configFile);
         return false;
     }
 
@@ -490,7 +503,7 @@ bool GoogleOAuth2::writeParam(const char * keyword, const char * value){
 
     // Append param at the end of file if not found
     file.seek(file.size() - 3);  // "\r\n}"
-    file.print(",\r\n  \"");
+    file.print(" , \r\n  \"");
     file.print(keyword);
     file.print("\": \"");
     file.print(value);
@@ -503,8 +516,8 @@ bool GoogleOAuth2::writeParam(const char * keyword, const char * value){
 void GoogleOAuth2::clearConfig()
 {
     Serial.print(PSTR("Deleting file: \r\n"));
-    Serial.println(_configFile);
-    if (_filesystem->remove(_configFile))
+    Serial.println(m_configFile);
+    if (m_filesystem->remove(m_configFile))
         Serial.println(PSTR("- file deleted"));
     else
         Serial.println(PSTR("- delete failed"));
@@ -512,14 +525,31 @@ void GoogleOAuth2::clearConfig()
 
 // Prints the content of a file to the Serial
 // (use of ArduinoJson for a pretty output)
-void GoogleOAuth2::printConfig()
+void GoogleOAuth2::printConfig() const
 {
     // Open file for reading
     Serial.println(PSTR("\nActual config file: "));
-    File file = _filesystem->open(_configFile, "r");
+    File file = m_filesystem->open(m_configFile, "r");
     while(file.available()){
        Serial.print((char)file.read());
     }
     Serial.println();
     file.close();
+}
+
+
+const String GoogleOAuth2::getValue(String &line, const char* param) const
+{
+    String value;
+    size_t pos = line.indexOf(param);            
+    if(pos != std::string::npos){
+        pos += strlen_P(param) ;
+        size_t valLen ;
+        if(line.indexOf("\"", pos) > -1)
+            valLen = line.indexOf("\"", pos) - pos;
+        else
+            valLen = line.indexOf(",", pos) - pos;
+        value = line.substring(pos, pos+valLen);   
+    }
+    return value;
 }

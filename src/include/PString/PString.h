@@ -87,9 +87,7 @@ public:
 
   // Safe access to sprintf-like formatting, 
   // e.g. str.format("Hi, my name is %s and I'm %d years old", name, age);
-  int format(const char *str, ...);
-
-  int format_P(const char *str, ...);
+  int format(char *str, ...);
 
   // Print Hex Byte to the String
   void printHexByte(uint8_t data);

@@ -1,100 +1,14 @@
 #include "GoogleGmail.h"
-#include "include/base64/base64.h"
+#include "include/base64/Base64.h"
 
-// external parser callback, just calls the internal one
-void __MailCallback(uint8_t filter, uint8_t level, const char *name, const char *value, void *cbObj)
-{
-	// call GoogleOAuth2 internal handler
-	((GoogleGmailAPI *)cbObj)->parseMailJson(filter, level, name, value);
-}
 
-// "GMail specialized parser"
-void GoogleGmailAPI::parseMailJson(uint8_t filter, uint8_t level, const char *name, const char *value){
-        
-    static bool done = false;     
-
-    // mail list
-    if(level == 2){        
-        if( !strcmp(name, "id") && !strcmp(_parser_mail.getCallFunction(), "getMailList")){   
-            _mailList->addMailId(value, false);
-            done = false; 
-        }
-    }
-
-    // mail metadata
-    if(level == 3  && !strcmp(_parser_mail.getCallFunction(), "getMailData")){
-        enum { NONE, DATE, FROM, SUBJECT};
-        static int next = NONE;
-        const char * id = _parser_mail.getCallKeyword();
-
-        if (!strcmp(name, "name") && !strcmp(value, "From"))
-            next = FROM;
-        if (!strcmp(name, "name") && !strcmp(value, "Date"))
-            next = DATE;
-        if (!strcmp(name, "name") && !strcmp(value, "Subject"))
-            next = SUBJECT;
-
-        if( !strcmp(name, "value") && next == FROM){   
-            next = NONE;
-            _mailList->setFrom(id, value);
-        }
-        if( !strcmp(name, "value")  && next == DATE){    
-            next = NONE;
-            _mailList->setDate(id, value);
-        }
-        if( !strcmp(name, "value") && next == SUBJECT){    
-            next = NONE;
-            _mailList->setSubject(id, value);
-        }
-        
-    }
-
-    if( level == 0 ){
-
-        // Read email snippet only
-        if(!strcmp(_parser_mail.getCallKeyword(), "mail_snippet")){            
-            if( !done && !strcmp(name, "snippet") ){   
-                done = true;                        
-                _parser_mail.setOutput(value, strlen(value));
-            }
-        }
-
-        // Last value of json response (to reset done variable)
-        if( !strcmp(_parser_mail.filter.keyword, "internalDate") ){
-            done = false;
-        }
-
-        // Send email response (the id and threadId of sent message)
-        if( !strcmp(name, "id") && !strcmp(_parser_mail.getCallFunction(), "sendEmail")){   
-            _parser_mail.setOutput(value, strlen(value));            
-        }
-    }
-
-    if(level == 4 && !done ) {              
-        // Read email body and decode
-        if( !strcmp(name, "data") && !strcmp(_parser_mail.getCallKeyword(), "mail_body")){                                   
-            done = true;
-            size_t dec_size = b64_decoded_size(value);
-            char* decoded = new char[dec_size+1];
-            // decode base 64 body message
-            if(base64_decode(value, decoded, dec_size)){
-                _parser_mail.setOutput(decoded, dec_size);
-            }
-                                   
-        }        
-    }   
-    
-}
 
 GoogleGmailAPI::GoogleGmailAPI(fs::FS *fs, GmailList * list) :  GoogleOAuth2(fs) {
     _mailList = list;
-    _parser_mail.setCallback(__MailCallback, this);
-
 }
 
 GoogleGmailAPI::GoogleGmailAPI(fs::FS *fs, const char *configFile, GmailList * list) :  GoogleOAuth2(fs, configFile){  
     _mailList = list;
-    _parser_mail.setCallback(__MailCallback, this);
 }
 
 void GoogleGmailAPI::setMessageRead(const char* idEmail){
@@ -108,39 +22,114 @@ void GoogleGmailAPI::setMessageRead(const char* idEmail){
 }
 
 
-const char* GoogleGmailAPI::readClient(const char* funcName, const char* key)
+
+String GoogleGmailAPI::parseLine(String &line,  const char* _funcName, const char* _keyword){
+
+    // Read email snippet only
+    if(memcmp_P(_funcName, PSTR("mail_snippet"), strlen("mail_snippet")) == 0){    
+        String value = String('\0');
+        value.reserve(200);
+        value = getValue(line, "\"snippet\": \"" );
+        if(value.length())  { 
+            return value;
+        }
+    }
+
+    // Read email body only
+    if(memcmp_P(_funcName, PSTR("mail_body"), strlen("mail_body") ) == 0){    
+        String value = getValue(line, "\"data\": \"" ).c_str();
+        if(value.length()){             
+            size_t len = base64_dec_len(value.c_str(), value.length());
+            char* decoded = new char[len+1];
+            decoded[len] = '\0';
+            base64_decode(decoded, value.c_str(), value.length());
+            return (const char*) decoded;   
+        }
+    }
+
+
+    if(memcmp_P(_funcName, PSTR("sendEmail"), strlen("sendEmail")) == 0){
+        // Send email response (the id and threadId of sent message)
+        String value = String('\0');
+        value.reserve(16);
+        value = getValue(line, "\"id\": \"" );
+        if(strlen(value.c_str()))     
+            return value.c_str();
+    }
+
+    if(memcmp_P(_funcName, PSTR("getMailList"), strlen("getMailList")) == 0){
+        String value = String('\0');
+        value.reserve(16);
+        value = getValue(line, "\"id\": \"" );
+        if(strlen(value.c_str()))     
+            _mailList->addMailId(value.c_str(), false);
+    }
+
+    if(memcmp_P(_funcName, PSTR("getMailData"), strlen("getMailData")) == 0){
+        enum { NONE, DATE, FROM, SUBJECT};
+        static int next = NONE;
+        const char * id = _keyword;
+        String value = String('\0');
+        value.reserve(SUBJ_LEN);
+
+        if (strstr_P(line.c_str(), PSTR("\"name\"")) && strstr(line.c_str(), "\"From\""))
+            next = FROM;
+        if (strstr_P(line.c_str(), PSTR("\"name\"")) && strstr(line.c_str(), "\"Date\""))
+            next = DATE;
+        if (strstr_P(line.c_str(), PSTR("\"name\"")) && strstr(line.c_str(), "\"Subject\""))
+            next = SUBJECT;
+
+        if( strstr_P(line.c_str(), PSTR("\"value\"")) && next == FROM){   
+            next = NONE;
+            value = getValue(line, "\"value\": \"" );
+            _mailList->setFrom(id, value.c_str() );
+        }
+        if( strstr_P(line.c_str(), PSTR("\"value\"")) && next == DATE){    
+            next = NONE;    
+            value = getValue(line, "\"value\": \"" );       
+            _mailList->setDate(id, value.c_str());
+        }
+        if( strstr_P(line.c_str(), PSTR("\"value\"")) && next == SUBJECT){    
+            next = NONE;
+            value = getValue(line, "\"value\": \"" );   
+            _mailList->setSubject(id, value.c_str());
+        }
+    }
+       
+    return "";
+}
+
+String GoogleGmailAPI::readClient(const char* _funcName, const char* _key)
 {
     functionLog() ;
-
-    // Init HTTP stream parser
-    _parser_mail.setSearchKey(funcName, key);
-	_parser_mail.reset();
     
-    serialLog("\nLooking for value: ");    
-    serialLogln(_parser_mail.filter.keyword); 
-    serialLogln();
-
     // Skip headers
-    while (ggclient.connected()) {
+    while (m_ggclient.connected()) {
         static char old;
-        char ch = ggclient.read();
+        char ch = m_ggclient.read();
         if (ch == '\n' && old == '\r') {
             break;
         }
         old = ch;
     }
-    // get body content
-    while (ggclient.available()) { 
-        char ch = ggclient.read();
-        if(_parser_mail.getOutput() == NULL){
-            _parser_mail.feed(ch);
-            delayMicroseconds(10);
+
+    while (m_ggclient.available()) { 
+        String line = m_ggclient.readStringUntil('\n');
+        String res = parseLine( line, _funcName, _key);
+        serialLogln(line);
+        // value found in json response (skip all the remaining)
+        if(res.length() > 0){
+            while (m_ggclient.available()) { 
+                m_ggclient.read(); 
+                yield();
+            }
+            m_ggclient.stop();
+            return res;
         }
-        serialLog((char)ch);
-        yield();
-    }    
-    ggclient.stop();
-    return nullptr;
+    }
+    if(m_ggclient.connected())
+        m_ggclient.stop();
+    return "";
 }
 
 
@@ -148,22 +137,23 @@ const char* GoogleGmailAPI::readClient(const char* funcName, const char* key)
 void GoogleGmailAPI::getMailData(const char* idEmail){
     functionLog() ;
 
-    size_t len = strlen_P(PSTR("/gmail/v1/users/me/messages/?format=metadata")) + strlen(idEmail) + 1;
-    char* cmd = new char[len];
-    snprintf_P(cmd, len, PSTR("/gmail/v1/users/me/messages/%s?format=metadata"), idEmail);
+    char buffer[64];
+    PString cmd(buffer, sizeof(buffer));
+    cmd = F("/gmail/v1/users/me/messages/%s?format=metadata");
+    cmd += idEmail;
 
     sendCommand("GET ", GMAIL_HOST, cmd, "", true);
-    readClient( __func__ , idEmail);
+    readClient( "getMailData" , idEmail);
 }
 
-const char* GoogleGmailAPI::getMailList(const char* from, bool unread, uint32_t maxResults){
+void GoogleGmailAPI::getMailList(const char* from, bool unread, uint32_t maxResults){
     functionLog() ;
 
     char buffer[128] ;
     PString uri(buffer, sizeof(buffer));
 
-    //uri = ("/gmail/v1/users/me/messages?maxResults=100");
-    uri.format_P(PSTR("/gmail/v1/users/me/messages?maxResults=%d"), maxResults);
+    uri = F("/gmail/v1/users/me/messages?maxResults=");
+    uri += maxResults;
 
     if(from != nullptr || unread){
         uri += PSTR("&q=");
@@ -181,26 +171,33 @@ const char* GoogleGmailAPI::getMailList(const char* from, bool unread, uint32_t 
     }
 
     sendCommand("GET ", GMAIL_HOST, uri, "", true);
-    readClient( __func__ , "messages");
-    return _parser_mail.getOutput();  
+    readClient( "getMailList" , ""); 
 }
 
 
 const char* GoogleGmailAPI::sendEmail(const char* to, const char* subject, const char* message){
     functionLog() ;
-    size_t clear_len = strlen(to) + strlen(subject) + strlen(message) + 32;
-    char* base64Buf = (char*)malloc( sizeof(char *) * clear_len);    
-    snprintf_P(base64Buf, clear_len, PSTR("To: %s\t\nSubject: %s\r\n\r\n%s"), to, subject, message);
-    
-    const char * base64enc = base64_encode((uint8_t *)base64Buf, strlen(base64Buf));
-    size_t enc_len = strlen(base64enc) + 32;
+    String tempsStr = F("To: ");
+    tempsStr += to;
+    tempsStr += F("\r\nSubject: ");
+    tempsStr += subject;
+    tempsStr += F("\r\n\r\n");
+    tempsStr += message;
 
-    char * body = (char*) malloc( sizeof(char*) * enc_len);
-    snprintf_P(body, enc_len, PSTR("{\"raw\": \"%s\"}"), base64enc);
+    //String encoded = base64::encode(tempsStr);
+    //size_t enc_len = encoded.length()  + 32;
 
-    sendCommand("POST ", GMAIL_HOST, "/gmail/v1/users/me/messages/send", body, true);
-    readClient( __func__ , "id");
-    return _parser_mail.getOutput();  
+    int len = base64_enc_len(tempsStr.length());
+    char* encoded = new char[len+1];
+    encoded[len] = '\0';
+    base64_encode( encoded, tempsStr.c_str(), tempsStr.length());            
+
+    tempsStr = F("{\"raw\": \"");
+    tempsStr += encoded;
+    tempsStr += F("\"}");
+
+    sendCommand("POST ", GMAIL_HOST, "/gmail/v1/users/me/messages/send", tempsStr.c_str(), true);
+    return readClient( "sendEmail" , "").c_str();
 }
 
 
@@ -211,16 +208,20 @@ const char* GoogleGmailAPI::readSnippet(const char* idEmail){
 
 const char* GoogleGmailAPI::readMail(const char* idEmail, bool snippet){
     functionLog() ;
-    size_t len = strlen_P(PSTR("/gmail/v1/users/me/messages/")) + strlen(idEmail) + 1;
-    char* cmd = new char[len];
-    snprintf_P(cmd, len, PSTR("/gmail/v1/users/me/messages/%s"), idEmail);
+
+    char buffer[64];
+    PString cmd(buffer, sizeof(buffer));
+    cmd = F("/gmail/v1/users/me/messages/");
+    cmd += idEmail;
 
     sendCommand("GET ", GMAIL_HOST, cmd, "", true);
-    if(snippet)
-        readClient( __func__ , "mail_snippet");
-    else
-        readClient( __func__ , "mail_body");    
-
-    return _parser_mail.getOutput();
+    const char * mail;
+    if(snippet){
+        mail = readClient( "mail_snippet" , idEmail).c_str();
+    }
+    else{
+        mail = readClient( "mail_body" , idEmail).c_str();  
+    }  
+    return mail;
 }
 

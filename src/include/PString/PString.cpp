@@ -48,23 +48,11 @@ void PString::write(uint8_t b)
 #endif
 }
 
-int PString::format(const char *str, ...) 
+int PString::format(char *str, ...) 
 { 
   va_list argptr;  
   va_start(argptr, str); 
   int ret = vsnprintf(_cur, _size - (_cur - _buf), str, argptr);
-  if (_size)
-     while (*_cur) 
-        ++_cur;
-  return ret;
-}
-
-
-int PString::format_P(const char *str, ...) 
-{ 
-  va_list argptr;  
-  va_start(argptr, str); 
-  int ret = vsnprintf_P(_cur, _size - (_cur - _buf), str, argptr);
   if (_size)
      while (*_cur) 
         ++_cur;

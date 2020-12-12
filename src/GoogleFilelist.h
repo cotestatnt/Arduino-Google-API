@@ -2,21 +2,12 @@
 #include <Arduino.h>
 
 struct GoogleFile{	
-	String name;
-	String id;
+	char* name;
+	char* id;
 	bool isFolder;
     GoogleFile *nextFile = nullptr;
 } ;
 
-
-/*
-struct GoogleFile{
-    char* name;
-    char* id;
-    char* type;
-    GoogleFile *nextFile = nullptr;
-} ;
-*/
 
 class GoogleFilelist {
 
