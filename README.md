@@ -5,6 +5,8 @@ With **GoogleAPI Arduino library**, you can easily authenticate your Espressif (
 
 The first step is create a new Project in the Google API console and set-up credentials in order to abtain a valid **Client ID, Client Secret, API key**. 
 Then you can enable all the required APIs (Drive, Gmail, Calendar etc etc). 
+Check this video for a quick how-to example https://youtu.be/iSd_2e4G18w
+
 You have to define also wich [scope](https://developers.google.com/identity/protocols/oauth2/scopes) your application will be able to manage.
 Follow instructions provided in [API Console Help](https://support.google.com/googleapi/answer/7037264) for detailed instructions and How-To.
 To create your project and credentials visit the page [Google API Console](https://console.developers.google.com/apis/credentials)
