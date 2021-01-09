@@ -41,7 +41,6 @@
 #endif
 
 #include <FS.h>
-#include "include/PString/PString.h"
 
 #define AUTH_HOST "oauth2.googleapis.com"
 #define PORT 443

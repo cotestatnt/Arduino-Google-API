@@ -30,6 +30,7 @@ public:
     char*   createFolder(const char *folderName, const char *parent, bool isName = false);
     String  searchFile(const char *fileName,  const char* parentId = nullptr);
     inline String  searchFile(String& fileName,  String& parentId) { return searchFile(fileName.c_str(), parentId.c_str()); }
+    inline String  searchFile(String& fileName ) { return searchFile(fileName.c_str(), nullptr); }
 
     bool    updateFileList();
     void    printFileList();

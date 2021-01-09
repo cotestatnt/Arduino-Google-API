@@ -137,22 +137,17 @@ String GoogleGmailAPI::readClient(const char* _funcName, const char* _key)
 void GoogleGmailAPI::getMailData(const char* idEmail){
     functionLog() ;
 
-    char buffer[64];
-    PString cmd(buffer, sizeof(buffer));
-    cmd = F("/gmail/v1/users/me/messages/%s?format=metadata");
+    String cmd = F("/gmail/v1/users/me/messages/%s?format=metadata");
     cmd += idEmail;
 
-    sendCommand("GET ", GMAIL_HOST, cmd, "", true);
+    sendCommand("GET ", GMAIL_HOST, cmd.c_str(), "", true);
     readClient( "getMailData" , idEmail);
 }
 
 void GoogleGmailAPI::getMailList(const char* from, bool unread, uint32_t maxResults){
     functionLog() ;
 
-    char buffer[128] ;
-    PString uri(buffer, sizeof(buffer));
-
-    uri = F("/gmail/v1/users/me/messages?maxResults=");
+    String uri = F("/gmail/v1/users/me/messages?maxResults=");
     uri += maxResults;
 
     if(from != nullptr || unread){
@@ -170,7 +165,7 @@ void GoogleGmailAPI::getMailList(const char* from, bool unread, uint32_t maxResu
             uri += PSTR("is:unread");
     }
 
-    sendCommand("GET ", GMAIL_HOST, uri, "", true);
+    sendCommand("GET ", GMAIL_HOST, uri.c_str(), "", true);
     readClient( "getMailList" , ""); 
 }
 
@@ -209,12 +204,10 @@ const char* GoogleGmailAPI::readSnippet(const char* idEmail){
 const char* GoogleGmailAPI::readMail(const char* idEmail, bool snippet){
     functionLog() ;
 
-    char buffer[64];
-    PString cmd(buffer, sizeof(buffer));
-    cmd = F("/gmail/v1/users/me/messages/");
+    String cmd = F("/gmail/v1/users/me/messages/");
     cmd += idEmail;
 
-    sendCommand("GET ", GMAIL_HOST, cmd, "", true);
+    sendCommand("GET ", GMAIL_HOST, cmd.c_str(), "", true);
     const char * mail;
     if(snippet){
         mail = readClient( "mail_snippet" , idEmail).c_str();

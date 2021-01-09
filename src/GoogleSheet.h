@@ -46,18 +46,10 @@ public:
     
     // Create a new sheet (in spreadsheet) and return the id
     bool      newSheet(const char *sheetName, const char *spreadsheetId);
-    // CHeck if sheetName is in spreadsheet and return sheet ID (unsigned long)
+    // Check if sheetName is in spreadsheet and return sheet ID (unsigned long)
     uint32_t  hasSheet(const char *sheetName, const char *spreadsheetId);
     
     // Append row to the spreadsheet
-    template <class ... Args>
-    inline bool appendRow_f(const char* spreadsheetId, const char* range, const char* format, Args ... args )     
-    {
-        char buffer[MAX_ROW_LEN];
-        snprintf(buffer, sizeof(buffer), format, args...);
-        return appendRowToSheet(spreadsheetId, range, buffer);
-    }
-
     bool appendRowToSheet(const char* spreadsheetId, const char* range, const char* row) ;
 
 private:

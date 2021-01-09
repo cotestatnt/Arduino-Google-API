@@ -250,7 +250,7 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
     #define BOUND_STR          "WebKitFormBoundary7MA4YWxkTrZu0gW"
     #define _BOUNDARY           "--" BOUND_STR
     #define END_BOUNDARY        "\r\n--" BOUND_STR "--\r\n"
-    #define BLOCK_SIZE          512
+    #define BLOCK_SIZE          2048
 
     if (!m_ggclient.connected()) 
         doConnection(API_HOST);    
@@ -265,7 +265,6 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
 
     String tmpStr;
     tmpStr.reserve(512);
-    //aString start;
     if(update){
         tmpStr = PSTR("PATCH /upload/drive/v3/files/");
         tmpStr += id;
@@ -318,13 +317,13 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
         yield();    
         buff[count++] = myFile.read();      
         if (count == BLOCK_SIZE ) {
-            serialLogln(PSTR("Sending binary data full buffer"));       
+            Serial.println(PSTR("Sending binary block data full buffer"));       
             m_ggclient.write((const uint8_t *)buff, BLOCK_SIZE);
             count = 0;
         }
     }
     if (count > 0) {        
-        serialLogln(PSTR("Sending binary data remaining buffer")); 
+        Serial.println(PSTR("Sending binary block data remaining buffer")); 
         m_ggclient.write((const uint8_t *)buff, count);
     }
 

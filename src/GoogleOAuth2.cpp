@@ -1,4 +1,5 @@
 #include "GoogleOAuth2.h"
+#include <Arduino.h>
 
 static const char digicert[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
@@ -62,9 +63,15 @@ bool GoogleOAuth2::begin(const char *id, const char *secret, const char *_scope)
     functionLog() ;
     m_expires_at_ms = 30000;
 
-#ifdef ESP8266 
+
     //m_ggclient.setInsecure();
 
+#if defined(ESP32)    
+    // BUG, loading certifcate from file not working 
+    // m_ggclient.loadCertificate(file_cert, file_cert.size() );     
+    m_ggclient.setCACert(digicert);
+
+#elif defined(ESP8266)
     // Load root certificate from file is exists
     if(m_filesystem->exists("/ca.cer") ){
         Serial.println(F("Root cerfificate loaded from file /ca.cer"));
@@ -73,7 +80,6 @@ bool GoogleOAuth2::begin(const char *id, const char *secret, const char *_scope)
     } else {
         m_ggclient.setCACert_P(digicert, sizeof(digicert));
     }
-
     m_ggclient.setSession(&m_session);
     m_ggclient.setBufferSizes(TCP_MSS, TCP_MSS);
 #endif
@@ -200,14 +206,12 @@ void GoogleOAuth2::sendCommand(const char *const &rest, const char *const &host,
     m_ggclient.print(F(" HTTP/1.1"));
     m_ggclient.print(F("\r\nHost: "));
     m_ggclient.print(host);
-    //m_ggclient.print(F("\r\nUser-Agent: arduino-esp"));
-    //m_ggclient.print(F("\r\nConnection: keep-alive"));
+    m_ggclient.print(F("\r\nUser-Agent: arduino-esp"));
+    m_ggclient.print(F("\r\nConnection: keep-alive"));
     m_ggclient.print(F("\r\nAccess-Control-Allow-Credentials: true"));
     m_ggclient.print(F("\r\nAccess-Control-Allow-Origin: ")); 
 
-    char buffer[64];
-    PString outStr(buffer, sizeof(buffer));
-    outStr = F("http://");
+    String outStr = F("http://");
 
 #ifdef ESP8266
     outStr += WiFi.hostname().c_str();  
