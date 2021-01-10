@@ -65,6 +65,7 @@ bool GoogleOAuth2::begin(const char *id, const char *secret, const char *_scope)
 
 
     //m_ggclient.setInsecure();
+    m_ggclient.setNoDelay(true);
 
 #if defined(ESP32)    
     // BUG, loading certifcate from file not working 

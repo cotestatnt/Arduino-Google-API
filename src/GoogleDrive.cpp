@@ -312,24 +312,23 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
     m_ggclient.print(tmpStr);
 
     uint8_t buff[BLOCK_SIZE];
-    uint16_t count = 0; 
     while (myFile.available()) {    
         yield();    
-        buff[count++] = myFile.read();      
-        if (count == BLOCK_SIZE ) {
-            Serial.println(PSTR("Sending binary block data full buffer"));       
-            m_ggclient.write((const uint8_t *)buff, BLOCK_SIZE);
-            count = 0;
-        }
+        if(myFile.available() > BLOCK_SIZE ){
+            myFile.read(buff, BLOCK_SIZE );   
+            serialLogln("Sending block data buffer");       
+            m_ggclient.write(buff, BLOCK_SIZE); 
+        }     
+        else {
+            serialLogln("Last data block ");
+            int b_size = myFile.available() ;
+            myFile.read(buff, b_size);
+            m_ggclient.write(buff, b_size); 
+        }            
     }
-    if (count > 0) {        
-        Serial.println(PSTR("Sending binary block data remaining buffer")); 
-        m_ggclient.write((const uint8_t *)buff, count);
-    }
-
-    serialLogln(END_BOUNDARY);
     m_ggclient.print(END_BOUNDARY);
     myFile.close();
+    serialLogln(END_BOUNDARY);  
     serialLogln();
     return true;
 }

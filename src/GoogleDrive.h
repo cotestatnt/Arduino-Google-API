@@ -12,6 +12,8 @@ class GoogleDriveAPI : public GoogleOAuth2
 
 public:
 
+
+
     GoogleDriveAPI (fs::FS *fs );
     GoogleDriveAPI (fs::FS *fs, GoogleFilelist* list);
     GoogleDriveAPI (fs::FS *fs, const char *configFile, GoogleFilelist* list);
@@ -47,6 +49,8 @@ protected:
     bool sendMultipartFormData(const char* path, const char* filename, const char* id, bool update = false);
     String readClient(const int expected, GoogleFile* gFile = nullptr );
     String parseLine(String &line, const int filter, GoogleFile* gFile );
+
+    String uploadFileName;
 };
 
 #endif
