@@ -5,9 +5,7 @@
 ### Introduction
 With **GoogleAPI Arduino library**, you can easily authenticate your Espressif (ESP8266 and ESP32) device as OAuth 2.0 client without user interaction except for the first time when your application must be authorized in order to provide the user's consent.
 
-The first step is create a new Project in the Google API console and set-up credentials in order to abtain a valid **Client ID, Client Secret, API key**. 
-Then you can enable all the required APIs (Drive, Gmail, Calendar etc etc). 
-Check this video for a quick how-to example https://youtu.be/iSd_2e4G18w
+The first step is create a new Project in the **Google API console** and set-up credentials in order to abtain a valid **Client ID, Client Secret, API key** and enable all the required APIs (Drive, Gmail, Sheets, Calendar etc etc). 
 
 You have to define also wich [scope](https://developers.google.com/identity/protocols/oauth2/scopes) your application will be able to manage.
 Follow instructions provided in [API Console Help](https://support.google.com/googleapi/answer/7037264) for detailed instructions and How-To.
@@ -33,6 +31,10 @@ If you own a top-level host, i've written a small php script and you can upload 
 Another good option for redirect uri, is using a micro-service like [pipedream.com](pipedream.com) for example. 
 The free plan will be largely sufficient for most cases (remember, you will need only once time for user). This is my pipedream [working workflow](https://pipedream.com/@cotestatnt/smart-air-p_mkCk3JW), feel free to copy and use for your convenience.
 The redirect uri to be used will be the one generated when you deploy your workflow (something like xxxxxxxxxx.m.pipedream.net).
+
+The redirect uri has to be inserted in your OAuth 2.0 Client ID credential definition (edit it after create). Remember also to add https://apis.google.com as authorized Javascript origin.
+
+![OAuth 2.0 Client ID](/credentials2.png)
 
 ### Features
 + Authorize application for the allowed scopes
