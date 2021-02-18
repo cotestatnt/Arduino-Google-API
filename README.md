@@ -65,7 +65,9 @@ GoogleGmailAPI Class
 ### Supported boards
 The library works with the ESP8266 and ESP32 chipset.
 
++ 1.0.1   Webserver included in source (no need to load Data folder in filesystem).
++ 1.0.3   Added support for Google Mail API
 + 1.0.2   Added support for Google Sheet API
-+ 1.0.1   Added support for gMail API
++ 1.0.1   Added support for Google Drive API
 + 1.0.0   Initial version
 
