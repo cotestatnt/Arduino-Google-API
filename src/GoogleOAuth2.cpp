@@ -1,6 +1,7 @@
 #include "GoogleOAuth2.h"
 #include <Arduino.h>
 
+
 static const char digicert[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
 MIIDujCCAqKgAwIBAgILBAAAAAABD4Ym5g0wDQYJKoZIhvcNAQEFBQAwTDEgMB4G
@@ -26,26 +27,17 @@ TBj0/VLZjmmx6BEP3ojY+x1J96relc8geMJgEtslQIxq/H5COEBkEveegeGTLg==
 -----END CERTIFICATE-----
 )EOF";
 
-GoogleOAuth2::GoogleOAuth2(fs::FS *fs) 
+GoogleOAuth2::GoogleOAuth2(fs::FS *fs)
 {
     functionLog() ;
     m_filesystem = fs;
-    m_ggstate = INIT;
-}
-
-
-GoogleOAuth2::GoogleOAuth2(fs::FS *fs, const char *configFile)
-{
-    functionLog() ;
-    m_filesystem = fs;
-    m_configFile = configFile;
     m_ggstate = INIT;
 }
 
 
 bool GoogleOAuth2::begin(){
-    File file = m_filesystem->open(m_configFile, "r");    
-    if(!file || file.isDirectory()){       
+    File file = m_filesystem->open(m_configFile, "r");
+    if(!file || file.isDirectory()){
         Serial.print(F("Failed to read configuration file"));
         Serial.println(m_configFile);
         Serial.println(F("If you call begin() without parameter, a configuration file must be present in filesystem"));
@@ -54,22 +46,25 @@ bool GoogleOAuth2::begin(){
     const char *id = readParam("client_id").c_str();
     const char *secret = readParam("client_secret").c_str();
     const char *_scope =readParam("scope").c_str();
-    return begin(id, secret, _scope);
+    const char *api_key =readParam("key").c_str();
+    const char *redirect_uri =readParam("redirect_uri").c_str();
+    return begin(id, secret, _scope, api_key, redirect_uri);
 }
 
 
-bool GoogleOAuth2::begin(const char *id, const char *secret, const char *_scope)
+bool GoogleOAuth2::begin(const char *id, const char *secret, const char *_scope, const char *api_key, const char* redirect_uri)
 {
     functionLog() ;
     m_expires_at_ms = 30000;
 
-
+    m_webserver = new EspWebServer(m_filesystem);
+    m_webserver->begin();
     //m_ggclient.setInsecure();
     m_ggclient.setNoDelay(true);
 
-#if defined(ESP32)    
-    // BUG, loading certifcate from file not working 
-    // m_ggclient.loadCertificate(file_cert, file_cert.size() );     
+#if defined(ESP32)
+    // BUG, loading certifcate from file not working
+    // m_ggclient.loadCertificate(file_cert, file_cert.size() );
     m_ggclient.setCACert(digicert);
 
 #elif defined(ESP8266)
@@ -86,7 +81,7 @@ bool GoogleOAuth2::begin(const char *id, const char *secret, const char *_scope)
 #endif
 
     // Load confif file or create it if don't exist
-    if (loadConfig(id, secret, _scope))
+    if (loadConfig(id, secret, _scope, api_key, redirect_uri))
     {
 		if (isAccessTokenValid())
 		{
@@ -100,47 +95,49 @@ bool GoogleOAuth2::begin(const char *id, const char *secret, const char *_scope)
             m_ggstate = GOT_TOKEN;
             return true;
 		}
-        
-	} 
-    else 
+
+	}
+    else
     {
         return false;
     }
 
     if( m_ggstate != GOT_TOKEN)
     {
-        // No valid access token (is this the first time we authorize app?)        
-        Serial.println(PSTR("\nNo valid access or refresh token found in config file."));		
+        // No valid access token (is this the first time we authorize app?)
+        Serial.println(PSTR("\nNo valid access or refresh token found in config file."));
 		if (requestDeviceCode()){
-            m_ggstate = REQUEST_AUTH; 
+            m_ggstate = REQUEST_AUTH;
             return true;
-        } 
+        }
         else {
             m_ggstate = INVALID;
             return false;
-        }                
+        }
     }
     // default value
     return false;
 }
 
 
-bool GoogleOAuth2::loadConfig(const char *id, const char *secret, const char *_scope)
+bool GoogleOAuth2::loadConfig(const char *id, const char *secret, const char *_scope, const char *api_key, const char* redirect_uri )
 {
     functionLog() ;
     if(! m_filesystem->exists(m_configFile))
     {
-        File newfile = m_filesystem->open(m_configFile, "w");   
+        File newfile = m_filesystem->open(m_configFile, "w");
         if (!newfile)
         {
             Serial.println(F("Failed to crete config file"));
             return false;
         }
-        newfile.print(F("{\r\n"));      
-        newfile.print(F("  \"scope\": \""));         newfile.print(_scope); newfile.print(F("\",\r\n"));  
-        newfile.print(F("  \"client_id\": \""));     newfile.print(id);     newfile.print(F("\",\r\n"));  
-        newfile.print(F("  \"client_secret\": \"")); newfile.print(secret); newfile.print(F("\"\r\n}"));  
-        newfile.close();        
+        newfile.print(F("{\r\n"));
+        newfile.print(F("  \"redirect_uri\": \""));  newfile.print(redirect_uri); newfile.print(F("\",  \r\n"));
+        newfile.print(F("  \"scope\": \""));         newfile.print(_scope); newfile.print(F("\",  \r\n"));
+        newfile.print(F("  \"api_key\": \""));       newfile.print(api_key); newfile.print(F("\",  \r\n"));
+        newfile.print(F("  \"client_id\": \""));     newfile.print(id);     newfile.print(F("\",  \r\n"));
+        newfile.print(F("  \"client_secret\": \"")); newfile.print(secret); newfile.print(F("\"  \r\n}"));
+        newfile.close();
         Serial.println(F("Config file created."));
         return true;
     }
@@ -159,7 +156,7 @@ int GoogleOAuth2::getState()
 {
     functionLog() ;
     if (m_ggstate == REQUEST_AUTH && pollingAuthorize()){
-        m_ggstate = GOT_TOKEN; 
+        m_ggstate = GOT_TOKEN;
         Serial.println("Got token");
     }
     return m_ggstate;
@@ -175,7 +172,7 @@ bool GoogleOAuth2::doConnection( const char *host ){
     */
     serialLog(PSTR("\nStarting connection to server..."));
 
-    if (!m_ggclient.connect(host, PORT)) 
+    if (!m_ggclient.connect(host, PORT))
     {
         serialLogln(PSTR(" failed!"));
         return false;
@@ -192,7 +189,7 @@ void GoogleOAuth2::sendCommand(const char *const &rest, const char *const &host,
     functionLog() ;
 
     // Refresh token if necessary except if this is called from refreshToken()
-    if(strcmp(command, "/token") != 0) 
+    if(strcmp(command, "/token") != 0)
         checkRefreshTime();
 
 #if DEBUG_MODE
@@ -210,13 +207,13 @@ void GoogleOAuth2::sendCommand(const char *const &rest, const char *const &host,
     m_ggclient.print(F("\r\nUser-Agent: arduino-esp"));
     m_ggclient.print(F("\r\nConnection: keep-alive"));
     m_ggclient.print(F("\r\nAccess-Control-Allow-Credentials: true"));
-    m_ggclient.print(F("\r\nAccess-Control-Allow-Origin: ")); 
+    m_ggclient.print(F("\r\nAccess-Control-Allow-Origin: "));
 
     String outStr = F("http://");
 
 #ifdef ESP8266
-    outStr += WiFi.hostname().c_str();  
-#elif defined(ESP32) 
+    outStr += WiFi.hostname().c_str();
+#elif defined(ESP32)
     outStr += WiFi.getHostname();
 #endif
     outStr += F(".local");
@@ -224,27 +221,27 @@ void GoogleOAuth2::sendCommand(const char *const &rest, const char *const &host,
 
     // Add content headers if body is not null
     if(strlen(body)> 0)
-    {   
+    {
        outStr = F("\r\nContent-Type: application/json\r\nContent-Length: ");
        outStr += strlen(body);
        m_ggclient.print(outStr);
     }
-    if (bearer) 
-    {        
+    if (bearer)
+    {
         m_ggclient.print(F("\r\nAuthorization: Bearer "));
         m_ggclient.print(readParam("access_token"));
     }
     m_ggclient.print(F("\r\n\r\n"));
-    if(strlen(body)> 0) 
-    {   
+    if(strlen(body)> 0)
+    {
         m_ggclient.print(body);
         serialLogln(body);
     }
-    
+
 }
 
 
-String GoogleOAuth2::parseLine(String &line, const char *filter = nullptr) 
+String GoogleOAuth2::parseLine(String &line, const char *filter = nullptr)
 {
 
     /*
@@ -258,48 +255,48 @@ String GoogleOAuth2::parseLine(String &line, const char *filter = nullptr)
     value.reserve(200);             // The max length for searched string is 200 (access_token)
 
     value = getValue(line, "\"expires_in\": \"" );
-    if(value.length())  { 
+    if(value.length())  {
         long _time = value.toInt();
-        m_expires_at_ms = 1000 * _time + millis();  
+        m_expires_at_ms = 1000 * _time + millis();
         Serial.print(_time);
         Serial.println(" seconds before token will expire.");
     }
 
     value = getValue(line, "\"access_token\": \"" );
-    if(value.length()) { 
+    if(value.length()) {
         writeParam("access_token", value.c_str());
-        m_expires_at_ms = 3599000L; 
+        m_expires_at_ms = 3599000L;
     }
 
     value = getValue(line, "\"refresh_token\": \"" );
-    if(value.length()) { 
+    if(value.length()) {
         writeParam("refresh_token", value.c_str());
     }
 
     value = getValue(line, "\"device_code\": \"" );
-    if(value.length()) {  
+    if(value.length()) {
         m_device_code = (char*)realloc( m_device_code, sizeof(char *) * (value.length()+1) );
-        strcpy( m_device_code , value.c_str());       
+        strcpy( m_device_code , value.c_str());
     }
 
     value = getValue(line, "\"user_code\": \"" );
-    if(value.length()) {  
+    if(value.length()) {
         m_user_code = (char*)realloc( m_user_code, sizeof(char *) * (value.length()+1) );
-        strcpy( m_user_code , value.c_str());       
+        strcpy( m_user_code , value.c_str());
         return m_user_code;
     }
 
     value = getValue(line, "\"token_type\": \"" );
-    if(value.length()) {       
+    if(value.length()) {
         return value;
     }
 
     value = getValue(line, "\"error\": \"" );
-    if(value.length()) {  
+    if(value.length()) {
         String err = "error: ";
-        err += value;       
+        err += value;
         return err;
-    } 
+    }
 
     return "";
 }
@@ -320,25 +317,25 @@ const char* GoogleOAuth2::readggClient( bool keep_connection)
     // get body content
     String res;
     res.reserve(200);
-    while (m_ggclient.available()) { 
+    while (m_ggclient.available()) {
         String line = m_ggclient.readStringUntil('\n');
         serialLogln(line);
         res = parseLine( line);
-        
+
         // value found in json response (skip all the remaining bytes)
         if(res.length() > 0){
-            while (m_ggclient.available()) { 
-                m_ggclient.read(); 
+            while (m_ggclient.available()) {
+                m_ggclient.read();
                 yield();
             }
             m_ggclient.stop();
             return res.c_str();
         }
-        
-    }    
+
+    }
 
     // Speed up some steps (for example during authentication procedure or renew of access tokem)
-    // Otherwise close connection and release memory 
+    // Otherwise close connection and release memory
     if(!keep_connection)
         m_ggclient.stop();
     return res.c_str();
@@ -362,11 +359,11 @@ bool GoogleOAuth2::isAccessTokenValid()
     String outStr = readParam("access_token");
     if(outStr.length() < 128)
         return false;
-    outStr = ("/tokeninfo?access_token=");    
+    outStr = ("/tokeninfo?access_token=");
     outStr += readParam("access_token");
-    
+
     sendCommand("GET ", AUTH_HOST, outStr.c_str(), "");
-    String res = readggClient(true);	
+    String res = readggClient(true);
     if (res.indexOf("error") > -1){
         Serial.println(res);
         return false;
@@ -380,17 +377,17 @@ bool GoogleOAuth2::refreshToken( bool stopClient)
     functionLog() ;
     if(readParam("refresh_token").length() == 0)
         return false;
-    
+
     String body =  F("{\"grant_type\":\"refresh_token\",\"client_id\":\"");
     body += readParam("client_id");
     body += F("\",\"client_secret\":\"");
     body += readParam("client_secret");
     body += F("\",\"refresh_token\":\"");
     body += readParam("refresh_token");
-    body += F("\"}");    
+    body += F("\"}");
 
     sendCommand("POST ", AUTH_HOST, "/token", body.c_str(), false);
-    String res = readggClient(stopClient);	
+    String res = readggClient(stopClient);
     if (res.indexOf("error") > -1){
         Serial.println(res);
         m_ggstate = INVALID;
@@ -409,8 +406,8 @@ bool GoogleOAuth2::requestDeviceCode()
     body += readParam("scope");
     body += F("\"}");
 
-    sendCommand("POST ", AUTH_HOST, "/device/code", body.c_str());    
-    String res = readggClient(true);	
+    sendCommand("POST ", AUTH_HOST, "/device/code", body.c_str());
+    String res = readggClient(true);
     if (res.indexOf(F("error")) > -1){
         Serial.println(res);
         return false;
@@ -428,7 +425,7 @@ bool GoogleOAuth2::pollingAuthorize()
 {
     functionLog() ;
 
-    // Check if user has submitted the code    
+    // Check if user has submitted the code
     String body =  F("{\"client_id\":\"");
     body += readParam("client_id");
     body += F("\",\"client_secret\":\"");
@@ -440,15 +437,15 @@ bool GoogleOAuth2::pollingAuthorize()
     sendCommand("POST ", AUTH_HOST, "/token", body.c_str());
 
     String res = readggClient(true);
-    if (res.indexOf("Bearer") > -1){   
-        Serial.print("Token type ");   
-        Serial.println(res); 
-        m_ggclient.stop(); 
+    if (res.indexOf("Bearer") > -1){
+        Serial.print("Token type ");
+        Serial.println(res);
+        m_ggclient.stop();
         return true;
     }
-        
+
     m_ggclient.stop();
-    return false;   
+    return false;
 }
 
 // Read a specific parameter from comnfig file
@@ -457,25 +454,25 @@ const String GoogleOAuth2::readParam(const char * keyword) const{
     String outStr = "";
     outStr.reserve(256);
 
-    File file = m_filesystem->open(m_configFile, "r");    
-    if(!file || file.isDirectory()){       
+    File file = m_filesystem->open(m_configFile, "r");
+    if(!file || file.isDirectory()){
         Serial.print(F("Failed to read file"));
         Serial.println(m_configFile);
         return "";
     }
-   
+
     while(file.available()){
         if (file.find(keyword)){
             // "access_token": "nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-            // Skip 4 chars  ": "            
-            file.read(); file.read();file.read(); file.read(); 
-            if(file.available()){                
-                outStr = file.readStringUntil('\"');                
-            }            
-            file.close();     
+            // Skip 4 chars  ": "
+            file.read(); file.read();file.read(); file.read();
+            if(file.available()){
+                outStr = file.readStringUntil('\"');
+            }
+            file.close();
             return outStr;
-        }  
-        return "";         
+        }
+        return "";
     }
     file.close();
     return "";
@@ -486,8 +483,8 @@ bool GoogleOAuth2::writeParam(const char * keyword, const char * value){
     functionLog() ;
 
     // Open file for writing
-    File file = m_filesystem->open(m_configFile, "r+"); 
-    if(!file || file.isDirectory()){       
+    File file = m_filesystem->open(m_configFile, "r+");
+    if(!file || file.isDirectory()){
         Serial.print(F("Failed to open file "));
         Serial.println(m_configFile);
         return false;
@@ -496,14 +493,14 @@ bool GoogleOAuth2::writeParam(const char * keyword, const char * value){
     while(file.available()){
         if (file.find(keyword)){
             // "access_token": "nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-            // Skip 4 chars  ": "            
+            // Skip 4 chars  ": "
             size_t pos = file.position() + 4;
             file.seek(pos);
             file.print(value);
-            file.print("\"");
-            file.close();        
+            file.print("\"  ");
+            file.close();
             return true;
-        }           
+        }
     }
 
     // Append param at the end of file if not found
@@ -512,8 +509,8 @@ bool GoogleOAuth2::writeParam(const char * keyword, const char * value){
     file.print(keyword);
     file.print("\": \"");
     file.print(value);
-    file.print("\"\r\n}");       
-    file.close();        
+    file.print("\"  \r\n}");
+    file.close();
     return true;
 }
 
@@ -546,7 +543,7 @@ void GoogleOAuth2::printConfig() const
 const String GoogleOAuth2::getValue(String &line, const char* param) const
 {
     String value;
-    size_t pos = line.indexOf(param);            
+    size_t pos = line.indexOf(param);
     if(pos != std::string::npos){
         pos += strlen_P(param) ;
         size_t valLen ;
@@ -554,7 +551,7 @@ const String GoogleOAuth2::getValue(String &line, const char* param) const
             valLen = line.indexOf("\"", pos) - pos;
         else
             valLen = line.indexOf(",", pos) - pos;
-        value = line.substring(pos, pos+valLen);   
+        value = line.substring(pos, pos+valLen);
     }
     return value;
 }

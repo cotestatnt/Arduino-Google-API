@@ -7,10 +7,9 @@
 #define API_DRIVE_HOST "www.googleapis.com"
 #define API_SHEET_HOST "sheets.googleapis.com"
 
-#define MAX_ROW_LEN 256
+#define MAX_ROW_LEN 512
 
-
-struct SheetProperties{	
+struct SheetProperties{
 	char* name;
 	char* id;
 	bool isFolder;
@@ -19,12 +18,11 @@ struct SheetProperties{
 
 class GoogleSheetAPI : public GoogleDriveAPI
 {
-    
+
 public:
 
     GoogleSheetAPI (fs::FS *fs );
     GoogleSheetAPI (fs::FS *fs, GoogleFilelist* list);
-    GoogleSheetAPI (fs::FS *fs, const char *configSheet, GoogleFilelist* list);
 
     // Methods for handling the spreadsheet list
     inline void     printSheetList()                { m_sheetlist->printList(); }
@@ -41,14 +39,14 @@ public:
 
     // // Create a new spreadsheet and return the id
     String          newSpreadsheet(const char *spreadsheetName, const char *parent, bool isName = false);
-    inline String   newSpreadsheet(String& spreadsheetName, String& parent, bool isName = false) {  
+    inline String   newSpreadsheet(String& spreadsheetName, String& parent, bool isName = false) {
                                             return newSpreadsheet(spreadsheetName.c_str(), parent.c_str(), isName);  }
-    
+
     // Create a new sheet (in spreadsheet) and return the id
     bool      newSheet(const char *sheetName, const char *spreadsheetId);
     // Check if sheetName is in spreadsheet and return sheet ID (unsigned long)
     uint32_t  hasSheet(const char *sheetName, const char *spreadsheetId);
-    
+
     // Append row to the spreadsheet
     bool appendRowToSheet(const char* spreadsheetId, const char* range, const char* row) ;
 
