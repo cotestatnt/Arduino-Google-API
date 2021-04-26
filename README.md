@@ -18,7 +18,8 @@ Client ID, Client Secret, API key and Scope can be created/defined **only once f
 The easiest way to use Google's APIs would be using Javascript OAuth 2.0 for Client-side library provided from Google itself in webpage hosted on ESP device, but unfortunately only top-level domain can be white-listed as "Authorized JavaScript origins" so this way is impracticable for our purposes.
 
 This library will authorize your device as **Web Service** using OAuth 2.0 endpoint for [Web Server Applications](https://developers.google.com/identity/protocols/oauth2/web-server) and a little webserver hosted on ESP is necessary.
-For your (or users) convenience, the provided **http://(your_device_address)/token** page can handle all necessary steps in background and finally save the json configuration file in the ESP memory.
+For your (or users) convenience, the provided **http://(your_device_address)/setup** page can handle all necessary steps in background and finally save the json configuration file in the ESP memory.
+ESP32 platform could have a little bug to fix https://github.com/espressif/arduino-esp32/issues/3652
 
 Note that users will be warned about "unverified App" unless you submit to Google a request for verification, if you require. 
 You can simply skip for testing purpose or if you don't need to redistribute: just click on *advanced* and then go to *---your app name---(unsafe)*.
