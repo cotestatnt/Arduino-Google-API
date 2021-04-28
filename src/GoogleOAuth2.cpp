@@ -1,35 +1,9 @@
 #include "GoogleOAuth2.h"
-#include <Arduino.h>
 
-
-static const char digicert[] PROGMEM = R"EOF(
------BEGIN CERTIFICATE-----
-MIIDujCCAqKgAwIBAgILBAAAAAABD4Ym5g0wDQYJKoZIhvcNAQEFBQAwTDEgMB4G
-A1UECxMXR2xvYmFsU2lnbiBSb290IENBIC0gUjIxEzARBgNVBAoTCkdsb2JhbFNp
-Z24xEzARBgNVBAMTCkdsb2JhbFNpZ24wHhcNMDYxMjE1MDgwMDAwWhcNMjExMjE1
-MDgwMDAwWjBMMSAwHgYDVQQLExdHbG9iYWxTaWduIFJvb3QgQ0EgLSBSMjETMBEG
-A1UEChMKR2xvYmFsU2lnbjETMBEGA1UEAxMKR2xvYmFsU2lnbjCCASIwDQYJKoZI
-hvcNAQEBBQADggEPADCCAQoCggEBAKbPJA6+Lm8omUVCxKs+IVSbC9N/hHD6ErPL
-v4dfxn+G07IwXNb9rfF73OX4YJYJkhD10FPe+3t+c4isUoh7SqbKSaZeqKeMWhG8
-eoLrvozps6yWJQeXSpkqBy+0Hne/ig+1AnwblrjFuTosvNYSuetZfeLQBoZfXklq
-tTleiDTsvHgMCJiEbKjNS7SgfQx5TfC4LcshytVsW33hoCmEofnTlEnLJGKRILzd
-C9XZzPnqJworc5HGnRusyMvo4KD0L5CLTfuwNhv2GXqF4G3yYROIXJ/gkwpRl4pa
-zq+r1feqCapgvdzZX99yqWATXgAByUr6P6TqBwMhAo6CygPCm48CAwEAAaOBnDCB
-mTAOBgNVHQ8BAf8EBAMCAQYwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQUm+IH
-V2ccHsBqBt5ZtJot39wZhi4wNgYDVR0fBC8wLTAroCmgJ4YlaHR0cDovL2NybC5n
-bG9iYWxzaWduLm5ldC9yb290LXIyLmNybDAfBgNVHSMEGDAWgBSb4gdXZxwewGoG
-3lm0mi3f3BmGLjANBgkqhkiG9w0BAQUFAAOCAQEAmYFThxxol4aR7OBKuEQLq4Gs
-J0/WwbgcQ3izDJr86iw8bmEbTUsp9Z8FHSbBuOmDAGJFtqkIk7mpM0sYmsL4h4hO
-291xNBrBVNpGP+DTKqttVCL1OmLNIG+6KYnX3ZHu01yiPqFbQfXf5WRDLenVOavS
-ot+3i9DAgBkcRcAtjOj4LaR0VknFBbVPFd5uRHg5h6h+u/N5GJG79G+dwfCMNYxd
-AfvDbbnvRG15RjF+Cv6pgsH/76tuIMRQyV+dTZsXjAzlAcmgQWpzU/qlULRuJQ/7
-TBj0/VLZjmmx6BEP3ojY+x1J96relc8geMJgEtslQIxq/H5COEBkEveegeGTLg==
------END CERTIFICATE-----
-)EOF";
-
-GoogleOAuth2::GoogleOAuth2(fs::FS *fs)
+GoogleOAuth2::GoogleOAuth2(fs::FS *fs, Client *client)
 {
     functionLog() ;
+    m_ggclient = client;
     m_filesystem = fs;
     m_ggstate = INIT;
 }
@@ -57,30 +31,7 @@ bool GoogleOAuth2::begin(const char *id, const char *secret, const char *_scope,
     functionLog() ;
     m_expires_at_ms = 30000;
 
-    m_webserver = new EspWebServer(m_filesystem);
-    m_webserver->begin();
-    //m_ggclient.setInsecure();
-    m_ggclient.setNoDelay(true);
-
-#if defined(ESP32)
-    // BUG, loading certifcate from file not working
-    // m_ggclient.loadCertificate(file_cert, file_cert.size() );
-    m_ggclient.setCACert(digicert);
-
-#elif defined(ESP8266)
-    // Load root certificate from file is exists
-    if(m_filesystem->exists("/ca.cer") ){
-        Serial.println(F("Root cerfificate loaded from file /ca.cer"));
-        File file_cert = m_filesystem->open("/ca.cer", "r");
-        m_ggclient.loadCACert(file_cert);
-    } else {
-        m_ggclient.setCACert_P(digicert, sizeof(digicert));
-    }
-    m_ggclient.setSession(&m_session);
-    m_ggclient.setBufferSizes(TCP_MSS, TCP_MSS);
-#endif
-
-    // Load confif file or create it if don't exist
+    // Load config file or create it if don't exist
     if (loadConfig(id, secret, _scope, api_key, redirect_uri))
     {
 		if (isAccessTokenValid())
@@ -119,6 +70,11 @@ bool GoogleOAuth2::begin(const char *id, const char *secret, const char *_scope,
     return false;
 }
 
+void  GoogleOAuth2::startAuthServer()
+{
+    authServer = new AuthServer(m_filesystem);
+    authServer->begin();
+}
 
 bool GoogleOAuth2::loadConfig(const char *id, const char *secret, const char *_scope, const char *api_key, const char* redirect_uri )
 {
@@ -165,14 +121,9 @@ int GoogleOAuth2::getState()
 
 bool GoogleOAuth2::doConnection( const char *host ){
     functionLog() ;
-    /*
-    if(m_ggclient.connected()){
-        m_ggclient.stop();
-    }
-    */
     serialLog(PSTR("\nStarting connection to server..."));
 
-    if (!m_ggclient.connect(host, PORT))
+    if (!m_ggclient->connect(host, PORT))
     {
         serialLogln(PSTR(" failed!"));
         return false;
@@ -196,18 +147,18 @@ void GoogleOAuth2::sendCommand(const char *const &rest, const char *const &host,
     Serial.printf("\nINFO - HTTP request: %s%s HTTP/1.1\n", rest, command);
 #endif
 
-    if (!m_ggclient.connected()) // || (millis() - lastConnectTime > SERVER_TIMEOUT))
+    if (!m_ggclient->connected()) // || (millis() - lastConnectTime > SERVER_TIMEOUT))
         if (!doConnection(host))
             return ;
-    m_ggclient.print(rest);
-    m_ggclient.print(command);
-    m_ggclient.print(F(" HTTP/1.1"));
-    m_ggclient.print(F("\r\nHost: "));
-    m_ggclient.print(host);
-    m_ggclient.print(F("\r\nUser-Agent: arduino-esp"));
-    m_ggclient.print(F("\r\nConnection: keep-alive"));
-    m_ggclient.print(F("\r\nAccess-Control-Allow-Credentials: true"));
-    m_ggclient.print(F("\r\nAccess-Control-Allow-Origin: "));
+    m_ggclient->print(rest);
+    m_ggclient->print(command);
+    m_ggclient->print(F(" HTTP/1.1"));
+    m_ggclient->print(F("\r\nHost: "));
+    m_ggclient->print(host);
+    m_ggclient->print(F("\r\nUser-Agent: arduino-esp"));
+    m_ggclient->print(F("\r\nConnection: keep-alive"));
+    m_ggclient->print(F("\r\nAccess-Control-Allow-Credentials: true"));
+    m_ggclient->print(F("\r\nAccess-Control-Allow-Origin: "));
 
     String outStr = F("http://");
 
@@ -217,24 +168,24 @@ void GoogleOAuth2::sendCommand(const char *const &rest, const char *const &host,
     outStr += WiFi.getHostname();
 #endif
     outStr += F(".local");
-    m_ggclient.print(outStr);
+    m_ggclient->print(outStr);
 
     // Add content headers if body is not null
     if(strlen(body)> 0)
     {
        outStr = F("\r\nContent-Type: application/json\r\nContent-Length: ");
        outStr += strlen(body);
-       m_ggclient.print(outStr);
+       m_ggclient->print(outStr);
     }
     if (bearer)
     {
-        m_ggclient.print(F("\r\nAuthorization: Bearer "));
-        m_ggclient.print(readParam("access_token"));
+        m_ggclient->print(F("\r\nAuthorization: Bearer "));
+        m_ggclient->print(readParam("access_token"));
     }
-    m_ggclient.print(F("\r\n\r\n"));
+    m_ggclient->print(F("\r\n\r\n"));
     if(strlen(body)> 0)
     {
-        m_ggclient.print(body);
+        m_ggclient->print(body);
         serialLogln(body);
     }
 
@@ -307,8 +258,8 @@ const char* GoogleOAuth2::readggClient( bool keep_connection)
     functionLog() ;
 
     // Skip headers
-    while (m_ggclient.connected()) {
-        String line = m_ggclient.readStringUntil('\n');
+    while (m_ggclient->connected()) {
+        String line = m_ggclient->readStringUntil('\n');
         if (line == "\r") {
         // serialLogln(line);
         break;
@@ -317,18 +268,18 @@ const char* GoogleOAuth2::readggClient( bool keep_connection)
     // get body content
     String res;
     res.reserve(200);
-    while (m_ggclient.available()) {
-        String line = m_ggclient.readStringUntil('\n');
+    while (m_ggclient->available()) {
+        String line = m_ggclient->readStringUntil('\n');
         serialLogln(line);
         res = parseLine( line);
 
         // value found in json response (skip all the remaining bytes)
         if(res.length() > 0){
-            while (m_ggclient.available()) {
-                m_ggclient.read();
+            while (m_ggclient->available()) {
+                m_ggclient->read();
                 yield();
             }
-            m_ggclient.stop();
+            m_ggclient->stop();
             return res.c_str();
         }
 
@@ -337,7 +288,7 @@ const char* GoogleOAuth2::readggClient( bool keep_connection)
     // Speed up some steps (for example during authentication procedure or renew of access tokem)
     // Otherwise close connection and release memory
     if(!keep_connection)
-        m_ggclient.stop();
+        m_ggclient->stop();
     return res.c_str();
 }
 
@@ -440,11 +391,11 @@ bool GoogleOAuth2::pollingAuthorize()
     if (res.indexOf("Bearer") > -1){
         Serial.print("Token type ");
         Serial.println(res);
-        m_ggclient.stop();
+        m_ggclient->stop();
         return true;
     }
 
-    m_ggclient.stop();
+    m_ggclient->stop();
     return false;
 }
 

@@ -3,7 +3,7 @@
 
 
 
-GoogleGmailAPI::GoogleGmailAPI(fs::FS *fs, GmailList * list) :  GoogleOAuth2(fs) {
+GoogleGmailAPI::GoogleGmailAPI(fs::FS *fs, Client *client, GmailList * list) :  GoogleOAuth2(fs, client) {
     _mailList = list;
 }
 
@@ -101,31 +101,31 @@ String GoogleGmailAPI::readClient(const char* _funcName, const char* _key)
     functionLog() ;
 
     // Skip headers
-    while (m_ggclient.connected()) {
+    while (m_ggclient->connected()) {
         static char old;
-        char ch = m_ggclient.read();
+        char ch = m_ggclient->read();
         if (ch == '\n' && old == '\r') {
             break;
         }
         old = ch;
     }
 
-    while (m_ggclient.available()) {
-        String line = m_ggclient.readStringUntil('\n');
+    while (m_ggclient->available()) {
+        String line = m_ggclient->readStringUntil('\n');
         String res = parseLine( line, _funcName, _key);
         serialLogln(line);
         // value found in json response (skip all the remaining)
         if(res.length() > 0){
-            while (m_ggclient.available()) {
-                m_ggclient.read();
+            while (m_ggclient->available()) {
+                m_ggclient->read();
                 yield();
             }
-            m_ggclient.stop();
+            m_ggclient->stop();
             return res;
         }
     }
-    if(m_ggclient.connected())
-        m_ggclient.stop();
+    if(m_ggclient->connected())
+        m_ggclient->stop();
     return "";
 }
 

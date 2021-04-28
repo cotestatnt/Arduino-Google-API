@@ -1,13 +1,6 @@
 #include "GoogleDrive.h"
 
-
-
-GoogleDriveAPI::GoogleDriveAPI(fs::FS *fs) : GoogleOAuth2(fs)
-{
-    m_filelist = nullptr;
-}
-
-GoogleDriveAPI::GoogleDriveAPI(fs::FS *fs, GoogleFilelist* list) : GoogleOAuth2(fs)
+GoogleDriveAPI::GoogleDriveAPI(fs::FS *fs, Client *client, GoogleFilelist* list) : GoogleOAuth2(fs, client)
 {
     m_filelist = list;
 }
@@ -94,8 +87,8 @@ String GoogleDriveAPI::readClient(const int filter, GoogleFile* gFile)
     functionLog() ;
 
     // Skip headers
-    while (m_ggclient.connected()) {
-        String line = m_ggclient.readStringUntil('\n');
+    while (m_ggclient->connected()) {
+        String line = m_ggclient->readStringUntil('\n');
         if (line == "\r") {
         // serialLogln(line);
         break;
@@ -105,8 +98,8 @@ String GoogleDriveAPI::readClient(const int filter, GoogleFile* gFile)
     // get body content
     String val;
     val.reserve(256);
-    while (m_ggclient.available()) {
-        String line = m_ggclient.readStringUntil('\n');
+    while (m_ggclient->available()) {
+        String line = m_ggclient->readStringUntil('\n');
         serialLogln(line);
 
         // Parse line only when lenght is congruent with expected data (skip braces an blank lines)
@@ -115,17 +108,17 @@ String GoogleDriveAPI::readClient(const int filter, GoogleFile* gFile)
 
         // value found in json response (skip all the remaining bytes)
         if(val.length()){
-            while (m_ggclient.available()) {
-                m_ggclient.read();
+            while (m_ggclient->available()) {
+                m_ggclient->read();
                 delay(1);
             }
-            m_ggclient.stop();
+            m_ggclient->stop();
             return val;
         }
 
     }
 
-    m_ggclient.stop();
+    m_ggclient->stop();
     return  "";
 }
 
@@ -246,7 +239,7 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
     #define END_BOUNDARY        "\r\n--" BOUND_STR "--\r\n"
     #define BLOCK_SIZE          2048
 
-    if (!m_ggclient.connected())
+    if (!m_ggclient->connected())
         doConnection(API_HOST);
 
     // Check if file can be opened
@@ -273,7 +266,7 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
 
     serialLogln();
     serialLog(tmpStr);
-    m_ggclient.print(tmpStr);
+    m_ggclient->print(tmpStr);
 
     tmpStr.begin();
     tmpStr = _BOUNDARY;
@@ -295,15 +288,15 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
     char contentLen[5];
     itoa(len, contentLen, 10);
 
-    m_ggclient.print("\r\nContent-Type: multipart/related; boundary=" BOUND_STR);
-    m_ggclient.print("\r\nContent-Length: ");
-    m_ggclient.print(contentLen);
-    m_ggclient.print("\r\nAuthorization: Bearer ");
-    m_ggclient.print(readParam("access_token"));
-    m_ggclient.print("\r\n\r\n");
+    m_ggclient->print("\r\nContent-Type: multipart/related; boundary=" BOUND_STR);
+    m_ggclient->print("\r\nContent-Length: ");
+    m_ggclient->print(contentLen);
+    m_ggclient->print("\r\nAuthorization: Bearer ");
+    m_ggclient->print(readParam("access_token"));
+    m_ggclient->print("\r\n\r\n");
 
     serialLog(tmpStr);
-    m_ggclient.print(tmpStr);
+    m_ggclient->print(tmpStr);
 
     uint8_t buff[BLOCK_SIZE];
     while (myFile.available()) {
@@ -311,16 +304,16 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
         if(myFile.available() > BLOCK_SIZE ){
             myFile.read(buff, BLOCK_SIZE );
             serialLogln("Sending block data buffer");
-            m_ggclient.write(buff, BLOCK_SIZE);
+            m_ggclient->write(buff, BLOCK_SIZE);
         }
         else {
             serialLogln("Last data block ");
             int b_size = myFile.available() ;
             myFile.read(buff, b_size);
-            m_ggclient.write(buff, b_size);
+            m_ggclient->write(buff, b_size);
         }
     }
-    m_ggclient.print(END_BOUNDARY);
+    m_ggclient->print(END_BOUNDARY);
     myFile.close();
     serialLogln(END_BOUNDARY);
     serialLogln();

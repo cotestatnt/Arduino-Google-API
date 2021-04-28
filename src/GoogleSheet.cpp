@@ -1,14 +1,8 @@
 #include "GoogleSheet.h"
 
-enum {APPEND_ROW, SHEET_ID};
+enum {SPREADSHEET_ID, APPEND_ROW, SHEET_ID};
 
-
-GoogleSheetAPI::GoogleSheetAPI(fs::FS *fs) : GoogleDriveAPI(fs)
-{
-    m_sheetlist = nullptr;
-}
-
-GoogleSheetAPI::GoogleSheetAPI(fs::FS *fs, GoogleFilelist* list) : GoogleDriveAPI(fs)
+GoogleSheetAPI::GoogleSheetAPI(fs::FS *fs, Client *client, GoogleFilelist* list) : GoogleDriveAPI(fs, client, list)
 {
     m_sheetlist = list;
 }
@@ -18,7 +12,7 @@ String GoogleSheetAPI::parseLine(String &line, const int filter, const char* fie
 {
     String value;
     value.reserve(128);
-    if(filter == APPEND_ROW ){
+    if(filter == APPEND_ROW || filter == SPREADSHEET_ID){
         value = getValue(line, "\"spreadsheetId\": \"" );
         if(value.length()) {
             return value;
@@ -48,9 +42,9 @@ String GoogleSheetAPI::readClient(const int filter, const char* field = nullptr 
     functionLog() ;
 
     // Skip headers
-    while (m_ggclient.connected()) {
+    while (m_ggclient->connected()) {
         static char old;
-        char ch = m_ggclient.read();
+        char ch = m_ggclient->read();
         if (ch == '\n' && old == '\r') {
             break;
         }
@@ -60,8 +54,8 @@ String GoogleSheetAPI::readClient(const int filter, const char* field = nullptr 
     // get body content
     String val;
     val.reserve(256);
-    while (m_ggclient.available()) {
-        String line = m_ggclient.readStringUntil('\n');
+    while (m_ggclient->available()) {
+        String line = m_ggclient->readStringUntil('\n');
         serialLogln(line);
 
         // Parse line only when lenght is congruent with expected data (skip braces an blank lines)
@@ -69,16 +63,16 @@ String GoogleSheetAPI::readClient(const int filter, const char* field = nullptr 
             val = parseLine(line, filter, field);
         // value found in json response (skip all the remaining bytes)
         if(val.length()){
-            while (m_ggclient.available()) {
-                m_ggclient.read();
+            while (m_ggclient->available()) {
+                m_ggclient->read();
                 yield();
             }
-            m_ggclient.stop();
+            m_ggclient->stop();
             return val;
         }
 
     }
-    m_ggclient.stop();
+    m_ggclient->stop();
     return  "";
 }
 
@@ -142,8 +136,9 @@ uint32_t  GoogleSheetAPI::hasSheet(const char *sheetName, const char *spreadshee
 
 // DRIVE methods
 
-String GoogleSheetAPI::newSpreadsheet(const char *spreadsheetName, const char *parent, bool isName)
+String GoogleSheetAPI::newSpreadsheet(const char *spreadsheetName, const char *sheetName, const char *parentId)
 {
+    /*
     functionLog() ;
     checkRefreshTime();
     String parentId;
@@ -161,6 +156,31 @@ String GoogleSheetAPI::newSpreadsheet(const char *spreadsheetName, const char *p
     serialLogln("\nHTTP Response:");
     GoogleFile gFile;
     return GoogleDriveAPI::readClient(NEW_FILE, &gFile);
+    */
+
+    functionLog() ;
+    checkRefreshTime();
+
+    // Create new spreadsheet
+    String req =  "{\"properties\": {\"title\": \"" ;
+    req += spreadsheetName;
+    req += "\"},\"sheets\": [{\"properties\": {\"title\": \"";
+    req += sheetName;
+    req += "\"}}]}";
+
+    sendCommand("POST ", API_SHEET_HOST, "/v4/spreadsheets", req.c_str(), true);
+    serialLogln("\nHTTP Response:");
+    String ssheetId = readClient(SPREADSHEET_ID, sheetName);
+
+    // Set parent for the new created file
+    //  PATCH https://www.googleapis.com/drive/v2/files/13P-IU3zKM2orBAUggqycdemtsu8p3R5rtna9-VPBzog?addParents=1UDcC0TfEzMO_2Kb7OgEThsXsEJhYlkxWHTTP/1.1
+    req = "/drive/v2/files/";
+    req += ssheetId;
+    req += "?addParents=";
+    req += parentId;
+    sendCommand("PATCH ", API_DRIVE_HOST, req.c_str(), "", true);
+    readClient(SPREADSHEET_ID, sheetName);
+    return ssheetId;
 }
 
 

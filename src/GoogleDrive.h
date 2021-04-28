@@ -11,11 +11,7 @@ class GoogleDriveAPI : public GoogleOAuth2
 {
 
 public:
-
-
-
-    GoogleDriveAPI (fs::FS *fs );
-    GoogleDriveAPI (fs::FS *fs, GoogleFilelist* list);
+    GoogleDriveAPI (fs::FS *fs, Client *client, GoogleFilelist* list);
 
     unsigned int    getNumFiles();
     const char*     getFileName(int index);

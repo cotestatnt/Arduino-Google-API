@@ -1,4 +1,3 @@
-
 #ifndef GOOGLESHEETAPI
 #define GOOGLESHEETAPI
 
@@ -20,9 +19,7 @@ class GoogleSheetAPI : public GoogleDriveAPI
 {
 
 public:
-
-    GoogleSheetAPI (fs::FS *fs );
-    GoogleSheetAPI (fs::FS *fs, GoogleFilelist* list);
+    GoogleSheetAPI (fs::FS *fs, Client *client, GoogleFilelist* list = nullptr);
 
     // Methods for handling the spreadsheet list
     inline void     printSheetList()                { m_sheetlist->printList(); }
@@ -38,9 +35,9 @@ public:
     inline char*    getSheetId()                { return m_spreadsheet_id; }
 
     // // Create a new spreadsheet and return the id
-    String          newSpreadsheet(const char *spreadsheetName, const char *parent, bool isName = false);
-    inline String   newSpreadsheet(String& spreadsheetName, String& parent, bool isName = false) {
-                                            return newSpreadsheet(spreadsheetName.c_str(), parent.c_str(), isName);  }
+    String          newSpreadsheet(const char *spreadsheetName, const char *sheetName, const char *parentId);
+    inline String   newSpreadsheet(String spreadsheetName, String sheetName, String parentId) {
+                                            return newSpreadsheet(spreadsheetName.c_str(), sheetName.c_str(), parentId.c_str() );  }
 
     // Create a new sheet (in spreadsheet) and return the id
     bool      newSheet(const char *sheetName, const char *spreadsheetId);

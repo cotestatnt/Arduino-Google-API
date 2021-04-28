@@ -1,3 +1,5 @@
+#include "Arduino.h"
+
 #define DEBUG_MODE false
 #if DEBUG_MODE
 #define serialLog(x) Serial.print(x)
@@ -24,23 +26,37 @@
     #define functionLog()
 #endif
 
-
 #ifndef GOOGLEOAUTH2
 #define GOOGLEOAUTH2
 
-#ifdef ESP8266
-  #include <ESP8266WiFi.h>
-  #include <WiFiClientSecure.h>
+static const char google_cert[] PROGMEM = R"EOF(
+-----BEGIN CERTIFICATE-----
+MIIDujCCAqKgAwIBAgILBAAAAAABD4Ym5g0wDQYJKoZIhvcNAQEFBQAwTDEgMB4G
+A1UECxMXR2xvYmFsU2lnbiBSb290IENBIC0gUjIxEzARBgNVBAoTCkdsb2JhbFNp
+Z24xEzARBgNVBAMTCkdsb2JhbFNpZ24wHhcNMDYxMjE1MDgwMDAwWhcNMjExMjE1
+MDgwMDAwWjBMMSAwHgYDVQQLExdHbG9iYWxTaWduIFJvb3QgQ0EgLSBSMjETMBEG
+A1UEChMKR2xvYmFsU2lnbjETMBEGA1UEAxMKR2xvYmFsU2lnbjCCASIwDQYJKoZI
+hvcNAQEBBQADggEPADCCAQoCggEBAKbPJA6+Lm8omUVCxKs+IVSbC9N/hHD6ErPL
+v4dfxn+G07IwXNb9rfF73OX4YJYJkhD10FPe+3t+c4isUoh7SqbKSaZeqKeMWhG8
+eoLrvozps6yWJQeXSpkqBy+0Hne/ig+1AnwblrjFuTosvNYSuetZfeLQBoZfXklq
+tTleiDTsvHgMCJiEbKjNS7SgfQx5TfC4LcshytVsW33hoCmEofnTlEnLJGKRILzd
+C9XZzPnqJworc5HGnRusyMvo4KD0L5CLTfuwNhv2GXqF4G3yYROIXJ/gkwpRl4pa
+zq+r1feqCapgvdzZX99yqWATXgAByUr6P6TqBwMhAo6CygPCm48CAwEAAaOBnDCB
+mTAOBgNVHQ8BAf8EBAMCAQYwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQUm+IH
+V2ccHsBqBt5ZtJot39wZhi4wNgYDVR0fBC8wLTAroCmgJ4YlaHR0cDovL2NybC5n
+bG9iYWxzaWduLm5ldC9yb290LXIyLmNybDAfBgNVHSMEGDAWgBSb4gdXZxwewGoG
+3lm0mi3f3BmGLjANBgkqhkiG9w0BAQUFAAOCAQEAmYFThxxol4aR7OBKuEQLq4Gs
+J0/WwbgcQ3izDJr86iw8bmEbTUsp9Z8FHSbBuOmDAGJFtqkIk7mpM0sYmsL4h4hO
+291xNBrBVNpGP+DTKqttVCL1OmLNIG+6KYnX3ZHu01yiPqFbQfXf5WRDLenVOavS
+ot+3i9DAgBkcRcAtjOj4LaR0VknFBbVPFd5uRHg5h6h+u/N5GJG79G+dwfCMNYxd
+AfvDbbnvRG15RjF+Cv6pgsH/76tuIMRQyV+dTZsXjAzlAcmgQWpzU/qlULRuJQ/7
+TBj0/VLZjmmx6BEP3ojY+x1J96relc8geMJgEtslQIxq/H5COEBkEveegeGTLg==
+-----END CERTIFICATE-----
+)EOF";
 
-#elif defined(ESP32)
-  #include <WiFiClientSecure.h>
-#else
- #include <SPI.h>
- #include <Ethernet.h>
-#endif
 
 #include <FS.h>
-#include "EspWebServer/EspWebServer.h"
+#include "WebServer/AuthServer.h"
 
 #define AUTH_HOST "oauth2.googleapis.com"
 #define PORT 443
@@ -50,19 +66,18 @@ class GoogleOAuth2
 
 public:
     enum { INIT, REQUEST_AUTH, GOT_TOKEN, REFRESH_TOKEN, INVALID };
-    GoogleOAuth2(fs::FS *fs);
+    GoogleOAuth2(fs::FS *fs, Client *client);
     bool begin(const char *id, const char *secret, const char *_scope, const char *api_key, const char* redirect_uri);
     bool begin();
     int  getState();
     void printConfig() const;
     void clearConfig();
 	const char* getUserCode();
-    inline void run(){
-        m_webserver->run();
-    }
+    void  startAuthServer();
+    AuthServer* authServer;
 
 protected:
-    EspWebServer* m_webserver;
+
     bool doConnection( const char *host);
     void sendCommand(const char *const &rest, const char *const &host,
                         const char *const &command, const char *const &body, bool bearer );
@@ -80,13 +95,14 @@ protected:
 
     String parseLine(String &line, const char *filter) ;
     const String getValue(String &line, const char* param) const;
+    Client *m_ggclient;
 
-#if defined(ESP32)
-    WiFiClientSecure m_ggclient;
-#else
-    BearSSL::Session m_session;
-    BearSSL::WiFiClientSecure m_ggclient;
-#endif
+// #if defined(ESP32)
+//     WiFiClientSecure m_ggclient;
+// #else
+//     BearSSL::Session m_session;
+//     BearSSL::WiFiClientSecure m_ggclient;
+// #endif
 
     char*       m_user_code;
     char*       m_device_code;
