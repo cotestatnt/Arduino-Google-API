@@ -1,7 +1,7 @@
 {
-  "redirect_uri": "https://enyi3pe1qtnnvz9.m.pipedream.net",
+  "redirect_uri": "https://enyi3pe1qxxxxz9.m.pipedream.net",
   "scope": "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets",
-  "api_key": "AIzaSyB-kUJQOcFya2Ls7qMlofObXhsECs2e3i0",
-  "client_id": "408231038603-f9g6btf4ip5ge3guv944q01qvoa2srhf.apps.googleusercontent.com",
-  "client_secret": "jb7XS8CMqgSsMUuldZm3LfJG"
+  "api_key": "AIzaSyB-xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "client_id": "xxxxxxxx-f9g6btf4ip5ge3guv944q01qvoa2srhf.apps.googleusercontent.com",
+  "client_secret": "xxxxxxxxxxxxxxxxxxxxxxxxxxx"
 }
