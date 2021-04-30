@@ -1,6 +1,6 @@
 #include "Arduino.h"
 
-#define DEBUG_MODE false
+#define DEBUG_MODE true
 #if DEBUG_MODE
 #define serialLog(x) Serial.print(x)
 #define serialLogln(x) Serial.println(x)

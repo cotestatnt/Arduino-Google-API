@@ -24,7 +24,7 @@ public:
     inline char* getAppFolderId(){ return m_appFolderId; }
 
     // return the google ID  for files or folder
-    char*   createFolder(const char *folderName, const char *parent, bool isName = false);
+    const char*   createFolder(const char *folderName, const char *parent, bool isName = false);
     String  searchFile(const char *fileName,  const char* parentId = nullptr);
     inline String  searchFile(String& fileName,  String& parentId) { return searchFile(fileName.c_str(), parentId.c_str()); }
     inline String  searchFile(String& fileName ) { return searchFile(fileName.c_str(), nullptr); }
@@ -33,8 +33,8 @@ public:
     void    printFileList();
 
     // Upload or update file
-    char*   uploadFile(const char* path, const char* folderId, bool isUpdate = true);
-    char*   uploadFile(String &path, String &folderId, bool isUpdate = true);
+    bool uploadFile(const char* path, const char* folderId, bool isUpdate, String& _id );
+    bool uploadFile(String &path, String &folderId, bool isUpdate, String& _id);
 
 protected:
     enum {WAIT_FILE, SAVE_ID, SAVE_NAME, SAVE_TYPE, SEARCH_ID, UPLOAD_ID, NEW_FILE};

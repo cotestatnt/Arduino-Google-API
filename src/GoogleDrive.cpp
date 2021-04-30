@@ -87,17 +87,21 @@ String GoogleDriveAPI::readClient(const int filter, GoogleFile* gFile)
     functionLog() ;
 
     // Skip headers
-    while (m_ggclient->connected()) {
-        String line = m_ggclient->readStringUntil('\n');
-        if (line == "\r") {
-        // serialLogln(line);
-        break;
-        }
+    if (m_ggclient->connected() && m_ggclient->available()) {
+        char endOfHeaders[] = "\r\n\r\n";
+		if (!m_ggclient->find(endOfHeaders)) {
+			serialLogln("Invalid HTTP response");
+			while (m_ggclient->available()) {
+                m_ggclient->read();
+            }
+			m_ggclient->stop();
+			return "";
+		}
     }
 
     // get body content
     String val;
-    val.reserve(256);
+    val.reserve(2048);
     while (m_ggclient->available()) {
         String line = m_ggclient->readStringUntil('\n');
         serialLogln(line);
@@ -110,7 +114,6 @@ String GoogleDriveAPI::readClient(const int filter, GoogleFile* gFile)
         if(val.length()){
             while (m_ggclient->available()) {
                 m_ggclient->read();
-                delay(1);
             }
             //m_ggclient->stop();
             return val;
@@ -168,7 +171,7 @@ bool GoogleDriveAPI::updateFileList(){
 
 
 // {{"title":"appData","mimeType":"application/vnd.google-apps.folder","parents":[{"id":"root"}]}
-char* GoogleDriveAPI::createFolder(const char *folderName, const char *parent, bool isName)
+const char* GoogleDriveAPI::createFolder(const char *folderName, const char *parent, bool isName)
 {
     functionLog() ;
     checkRefreshTime();
@@ -186,13 +189,14 @@ char* GoogleDriveAPI::createFolder(const char *folderName, const char *parent, b
     sendCommand("POST ", API_HOST, "/drive/v3/files", body.c_str(), true);
     serialLogln("\nHTTP Response:");
     GoogleFile gFile;
-    return (char*) readClient(UPLOAD_ID, &gFile).c_str();
+	String id = readClient(UPLOAD_ID, &gFile);
+    return id.c_str();
 }
 
 
 
 
-char* GoogleDriveAPI::uploadFile(const char* path, const char* folderId, bool isUpdate)
+bool GoogleDriveAPI::uploadFile(const char* path, const char* folderId, bool isUpdate, String& _id)
 {
     functionLog() ;
     checkRefreshTime();
@@ -223,12 +227,16 @@ char* GoogleDriveAPI::uploadFile(const char* path, const char* folderId, bool is
     }
 
     GoogleFile gFile;
-    return (char*) readClient(UPLOAD_ID, &gFile).c_str();
+	_id = readClient(UPLOAD_ID, &gFile);
+	return _id.length();
+	
 }
 
-char* GoogleDriveAPI::uploadFile(String &path, String &folderId, bool isUpdate)
+
+
+bool GoogleDriveAPI::uploadFile(String &path, String &folderId, bool isUpdate, String& _id)
  {
-    return uploadFile(path.c_str(), folderId.c_str(), isUpdate);
+    return uploadFile(path.c_str(), folderId.c_str(), isUpdate, _id);
  }
 
 
@@ -264,7 +272,7 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
 
     tmpStr += PSTR(" HTTP/1.1\r\nHost: ");
     tmpStr += API_HOST;
-    tmpStr += PSTR("\r\nUser-Agent: ESP32\r\nConnection: keep-alive");
+    tmpStr += PSTR("\r\nUser-Agent: arduino-esp\r\nConnection: keep-alive");
 
     serialLogln();
     serialLog(tmpStr);
@@ -300,7 +308,6 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
     serialLog(tmpStr);
     m_ggclient->print(tmpStr);
 	
-#ifdef ESP32
     uint8_t buff[BLOCK_SIZE];
 	uint16_t count = 0;
 	while (myFile.available()) {
@@ -314,10 +321,10 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
 	if (count > 0) {
 		m_ggclient->write((const uint8_t *)buff, count);
 	}
-#elif defined(ESP8266)
-    m_ggclient->write(myFile);
-#endif
-	m_ggclient->print(END_BOUNDARY);
+	
+
+	//m_ggclient->write(myFile);
+	m_ggclient->println(END_BOUNDARY);
     myFile.close();
 	
     serialLogln(END_BOUNDARY);
