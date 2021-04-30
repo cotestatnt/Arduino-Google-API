@@ -19,7 +19,7 @@ class GoogleSheetAPI : public GoogleDriveAPI
 {
 
 public:
-    GoogleSheetAPI (fs::FS *fs, Client *client, GoogleFilelist* list = nullptr);
+    GoogleSheetAPI (fs::FS& fs, Client& client, GoogleFilelist* list = nullptr);
 
     // Methods for handling the spreadsheet list
     inline void     printSheetList()                { m_sheetlist->printList(); }

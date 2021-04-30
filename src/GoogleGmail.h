@@ -14,7 +14,7 @@ class GoogleGmailAPI : public GoogleOAuth2
 {
 
 public:
-    GoogleGmailAPI(fs::FS *fs, Client *client, GmailList *list);
+    GoogleGmailAPI(fs::FS& fs, Client& client, GmailList *list);
 
     const char* sendEmail(const char * to, const char * subject, const char * message);
     const char* sendEmail(String& to, String& subject, String& message){

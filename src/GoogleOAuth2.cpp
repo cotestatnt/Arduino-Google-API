@@ -1,10 +1,10 @@
 #include "GoogleOAuth2.h"
 
-GoogleOAuth2::GoogleOAuth2(fs::FS *fs, Client *client)
+GoogleOAuth2::GoogleOAuth2(fs::FS& fs, Client& client)
 {
     functionLog() ;
-    m_ggclient = client;
-    m_filesystem = fs;
+    m_ggclient = &client;
+    m_filesystem = &fs;
     m_ggstate = INIT;
 }
 
@@ -70,11 +70,6 @@ bool GoogleOAuth2::begin(const char *id, const char *secret, const char *_scope,
     return false;
 }
 
-void  GoogleOAuth2::startAuthServer()
-{
-    authServer = new AuthServer(m_filesystem);
-    authServer->begin();
-}
 
 bool GoogleOAuth2::loadConfig(const char *id, const char *secret, const char *_scope, const char *api_key, const char* redirect_uri )
 {

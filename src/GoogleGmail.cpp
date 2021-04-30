@@ -3,7 +3,7 @@
 
 
 
-GoogleGmailAPI::GoogleGmailAPI(fs::FS *fs, Client *client, GmailList * list) :  GoogleOAuth2(fs, client) {
+GoogleGmailAPI::GoogleGmailAPI(fs::FS& fs, Client &client, GmailList * list) : GoogleOAuth2(fs, client) {
     _mailList = list;
 }
 

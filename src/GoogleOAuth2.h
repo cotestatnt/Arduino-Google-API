@@ -56,7 +56,7 @@ TBj0/VLZjmmx6BEP3ojY+x1J96relc8geMJgEtslQIxq/H5COEBkEveegeGTLg==
 
 
 #include <FS.h>
-#include "WebServer/AuthServer.h"
+#include "GapiServer.h"
 
 #define AUTH_HOST "oauth2.googleapis.com"
 #define PORT 443
@@ -66,15 +66,14 @@ class GoogleOAuth2
 
 public:
     enum { INIT, REQUEST_AUTH, GOT_TOKEN, REFRESH_TOKEN, INVALID };
-    GoogleOAuth2(fs::FS *fs, Client *client);
+    GoogleOAuth2(fs::FS &fs, Client &client);
     bool begin(const char *id, const char *secret, const char *_scope, const char *api_key, const char* redirect_uri);
     bool begin();
     int  getState();
     void printConfig() const;
     void clearConfig();
 	const char* getUserCode();
-    void  startAuthServer();
-    AuthServer* authServer;
+
 
 protected:
 

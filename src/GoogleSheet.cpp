@@ -2,7 +2,7 @@
 
 enum {SPREADSHEET_ID, APPEND_ROW, SHEET_ID};
 
-GoogleSheetAPI::GoogleSheetAPI(fs::FS *fs, Client *client, GoogleFilelist* list) : GoogleDriveAPI(fs, client, list)
+GoogleSheetAPI::GoogleSheetAPI(fs::FS &fs, Client &client, GoogleFilelist* list) : GoogleDriveAPI(fs, client, list)
 {
     m_sheetlist = list;
 }

@@ -1,6 +1,6 @@
 #include "GoogleDrive.h"
 
-GoogleDriveAPI::GoogleDriveAPI(fs::FS *fs, Client *client, GoogleFilelist* list) : GoogleOAuth2(fs, client)
+GoogleDriveAPI::GoogleDriveAPI(fs::FS& fs, Client& client, GoogleFilelist* list) : GoogleOAuth2(fs, client)
 {
     m_filelist = list;
 }
