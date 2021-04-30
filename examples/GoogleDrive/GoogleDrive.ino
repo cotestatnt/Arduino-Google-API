@@ -30,16 +30,16 @@ struct tm Time;
 #endif
 
 // WiFi setup
-const char* ssid = "PuccosNET";         // SSID WiFi network
-const char* password = "Tole76tnt";     // Password  WiFi network
+const char* ssid = "xxxxxxxx";         // SSID WiFi network
+const char* password = "xxxxxxxx";     // Password  WiFi network
 const char* hostname = "gapi_esp";      // http://gapi_esp.local/
 
 // Google API OAuth2.0 client setup default values (you can change later with setup webpage)
-const char* client_id     =  "408231038603-f9g6btf4ip5ge3guv944q01qvoa2srhf.apps.googleusercontent.com";
-const char* client_secret =  "jb7XS8CMqgSsMUuldZm3LfJG";
-const char* api_key       =  "AIzaSyB-kUJQOcFya2Ls7qMlofObXhsECs2e3i0";
+const char* client_id     =  "xxxxxxx-f9g6btf4ip5gexxxxxxxxxqvoa2srhf.apps.googleusercontent.com";
+const char* client_secret =  "xxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+const char* api_key       =  "xxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxx";
 const char* scopes        =  "https://www.googleapis.com/auth/drive.file";
-const char* redirect_uri  =  "https://enyi3pe1qtnnvz9.m.pipedream.net";
+const char* redirect_uri  =  "https://xxxxxxxxxxxx.m.pipedream.net";
 
 const char* APP_FOLDERNAME = "DataFolder";   // Google Drive online folder name
 const char* dataFolderName = "/data";        // Local folder for store data files
@@ -152,13 +152,13 @@ void uploadToDrive(){
     if(fileid.length() > 30) {
         Serial.print("\n\nFile present in app folder. \nCall update method for ");
         Serial.println(localPath);
-        uploadedId = myDrive.uploadFile(localPath, fileid, true);
+        myDrive.uploadFile(localPath, fileid, true, uploadedId);
     }
     else {        
         Serial.print("\n\nFile not present in app folder. Call upload method for");
         Serial.println(localPath);
         String appFolderId = myDrive.getAppFolderId();
-        uploadedId = myDrive.uploadFile(localPath, appFolderId, false);
+        myDrive.uploadFile(localPath, appFolderId, false, uploadedId);
     }
 
     if(uploadedId.length()){  
@@ -238,7 +238,7 @@ void setup(){
     //client.setNoDelay(1);
     client.setSession(&session);
     client.setTrustAnchors(&certificate);
-    client.setBufferSizes(1024, 1024);
+    client.setBufferSizes(1024, 2048);
     WiFi.hostname(hostname);
 #elif defined(ESP32)
     client.setCACert(google_cert);
@@ -316,6 +316,8 @@ void setup(){
     snprintf(dataFileName, MAX_NAME_LEN, "%04d%02d%02d.txt", Time.tm_year+1900, Time.tm_mon+1, Time.tm_mday );
     // Append to the file the first measure on reboot
     appendMeasurement();
+
+    uploadToDrive();
 }
 
 void loop(){
@@ -333,7 +335,7 @@ void loop(){
 
     // Upload data file to Google Drive once a minute
     static uint32_t uploadTime;
-    if(millis() - uploadTime > 60000) {
+    if(millis() - uploadTime > 30000) {
       uploadTime = millis();
       uploadToDrive();
       Serial.print("Upload time: ");
