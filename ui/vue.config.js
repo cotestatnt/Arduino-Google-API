@@ -1,5 +1,4 @@
 const WebpackShellPlugin = require('webpack-shell-plugin');
-// const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 module.exports = {
   chainWebpack: (config) => {
@@ -35,7 +34,6 @@ module.exports = {
         new WebpackShellPlugin({
             onBuildEnd: ['node finalize.js']
         }),
-        // new BundleAnalyzerPlugin()
       ]
     }
 }

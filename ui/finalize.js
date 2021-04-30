@@ -57,7 +57,7 @@ const uint32_t WEBPAGE_HTML_SIZE = ${indexHTML.length};
 const char WEBPAGE_HTML[] PROGMEM = { ${indexHTML} };
 `;
 
-  fs.writeFileSync(__dirname + '/dist/webpage.h', source, 'utf8');
-  fs.writeFileSync('../Arduino-Google-API/src/WebServer/setup_htm.h', source, 'utf8');
+fs.writeFileSync(__dirname + '/dist/webpage.h', source, 'utf8');
+//  fs.writeFileSync('../Arduino-Google-API/src/WebServer/setup_htm.h', source, 'utf8');
 
 });
