@@ -36,8 +36,10 @@ public:
 
     // // Create a new spreadsheet and return the id
     String          newSpreadsheet(const char *spreadsheetName, const char *sheetName, const char *parentId);
-    inline String   newSpreadsheet(String spreadsheetName, String sheetName, String parentId) {
-                                            return newSpreadsheet(spreadsheetName.c_str(), sheetName.c_str(), parentId.c_str() );  }
+    inline String   newSpreadsheet(String spreadsheetName, String sheetName, String parentId) 
+	{
+        return newSpreadsheet(spreadsheetName.c_str(), sheetName.c_str(), parentId.c_str() );  
+	}
 
     // Create a new sheet (in spreadsheet) and return the id
     bool      newSheet(const char *sheetName, const char *spreadsheetId);

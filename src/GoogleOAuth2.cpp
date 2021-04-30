@@ -116,16 +116,23 @@ int GoogleOAuth2::getState()
 
 bool GoogleOAuth2::doConnection( const char *host ){
     functionLog() ;
-    serialLog(PSTR("\nStarting connection to server..."));
 
-    if (!m_ggclient->connect(host, PORT))
-    {
-        serialLogln(PSTR(" failed!"));
-        return false;
+	// Start connection with Telegramn server (if necessary)
+    if (!m_ggclient->connected()) {
+
+        m_ggclient->flush();
+        m_ggclient->clearWriteError();
+
+        serialLog("Start handshaking...");
+        if (!m_ggclient->connect(host, PORT)) {
+            Serial.printf("\n\nUnable to connect to Google API server\n");
+        }
+        else {
+            serialLog("Connected\n");
+        }
     }
-    else
-        serialLogln(PSTR(" Done!"));
-    return true;
+    return m_ggclient->connected();
+	
 }
 
 

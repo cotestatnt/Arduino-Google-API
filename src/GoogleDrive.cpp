@@ -112,13 +112,13 @@ String GoogleDriveAPI::readClient(const int filter, GoogleFile* gFile)
                 m_ggclient->read();
                 delay(1);
             }
-            m_ggclient->stop();
+            //m_ggclient->stop();
             return val;
         }
 
     }
 
-    m_ggclient->stop();
+    //m_ggclient->stop();
     return  "";
 }
 
@@ -221,7 +221,7 @@ char* GoogleDriveAPI::uploadFile(const char* path, const char* folderId, bool is
         serialLog("\nCreate new file\n");
         sendMultipartFormData(path, filename, folderId, false);
     }
-    delete(filename);
+
     GoogleFile gFile;
     return (char*) readClient(UPLOAD_ID, &gFile).c_str();
 }
@@ -230,6 +230,8 @@ char* GoogleDriveAPI::uploadFile(String &path, String &folderId, bool isUpdate)
  {
     return uploadFile(path.c_str(), folderId.c_str(), isUpdate);
  }
+
+
 
 bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filename, const char* id, bool update)
 {
@@ -297,28 +299,32 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
 
     serialLog(tmpStr);
     m_ggclient->print(tmpStr);
-
+	
+#ifdef ESP32
     uint8_t buff[BLOCK_SIZE];
-    while (myFile.available()) {
-        yield();
-        if(myFile.available() > BLOCK_SIZE ){
-            myFile.read(buff, BLOCK_SIZE );
-            serialLogln("Sending block data buffer");
-            m_ggclient->write(buff, BLOCK_SIZE);
-        }
-        else {
-            serialLogln("Last data block ");
-            int b_size = myFile.available() ;
-            myFile.read(buff, b_size);
-            m_ggclient->write(buff, b_size);
-        }
-    }
-    m_ggclient->print(END_BOUNDARY);
+	uint16_t count = 0;
+	while (myFile.available()) {
+		yield();
+		buff[count++] = (uint8_t)myFile.read();
+		if (count == BLOCK_SIZE ) {
+			m_ggclient->write((const uint8_t *)buff, BLOCK_SIZE);
+			count = 0;
+		}
+	}
+	if (count > 0) {
+		m_ggclient->write((const uint8_t *)buff, count);
+	}
+#elif defined(ESP8266)
+    m_ggclient->write(myFile);
+#endif
+	m_ggclient->print(END_BOUNDARY);
     myFile.close();
+	
     serialLogln(END_BOUNDARY);
     serialLogln();
     return true;
 }
+
 
 const char* GoogleDriveAPI::getFileName(int index)
 {
@@ -340,3 +346,74 @@ unsigned int  GoogleDriveAPI::getNumFiles()
     return m_filelist->size();
 }
 
+
+
+/*
+bool GoogleDriveAPI::sendDocument(uint32_t chat_id, const char* command, const char* contentType, const char* binaryPropertyName, Stream* stream, size_t size)
+{
+    #define BOUNDARY            "----WebKitFormBoundary7MA4YWxkTrZu0gW"
+    #define END_BOUNDARY        "\r\n--" BOUNDARY "--\r\n"
+
+    if (m_ggclient->connected()) {
+        m_waitingReply = true;
+
+        String formData((char *)0);
+        formData = "--" BOUNDARY;
+        formData += "\r\nContent-disposition: form-data; name=\"chat_id\"\r\n\r\n";
+        formData += chat_id;
+        formData += "\r\n--" BOUNDARY;
+        formData += "\r\nContent-disposition: form-data; name=\"";
+        formData += binaryPropertyName;
+        formData += "\"; filename=\"";
+        formData += "image.jpg";
+        formData += "\"\r\nContent-Type: ";
+        formData += contentType;
+        formData += "\r\n\r\n";
+        int contentLength = size + formData.length() + strlen(END_BOUNDARY);
+
+        String request((char *)0);
+        request = "POST /bot";
+        request += m_token;
+        request += "/";
+        request += command;
+        request += " HTTP/1.1\r\nHost: " TELEGRAM_HOST;
+        request += "\r\nContent-Length: ";
+        request += contentLength;
+        request += "\r\nContent-Type: multipart/form-data; boundary=" BOUNDARY "\r\n";
+		
+		
+
+        // Send POST request to host
+        m_ggclient->println(request);
+
+        // Body of request
+        m_ggclient->print(formData);
+
+        // uint32_t t1 = millis();
+        uint8_t buff[BLOCK_SIZE];
+        uint16_t count = 0;
+        while (stream->available()) {
+            yield();
+            buff[count++] = (uint8_t)stream->read();
+            if (count == BLOCK_SIZE ) {
+                //log_debug("\nSending binary photo full buffer");
+                m_ggclient->write((const uint8_t *)buff, BLOCK_SIZE);
+                count = 0;
+                m_lastmsg_timestamp = millis();
+            }
+        }
+        if (count > 0) {
+            //log_debug("\nSending binary photo remaining buffer");
+            m_ggclient->write((const uint8_t *)buff, count);
+        }
+
+        m_ggclient->print(END_BOUNDARY);
+    }
+    else {
+        Serial.println("\nError: client not connected");
+        return false;
+    }
+    return true;
+}
+
+*/
