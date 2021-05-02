@@ -234,6 +234,7 @@ const char* GoogleDriveAPI::uploadFile(String &path, String &id, bool isUpdate)
     return uploadFile(path.c_str(), id.c_str(), isUpdate);
  }
 
+
 bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filename, const char* id, bool update)
 {
     functionLog() ;
@@ -271,7 +272,6 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
     serialLog(tmpStr);
     m_ggclient->print(tmpStr);
 
-    tmpStr.begin();
     tmpStr = _BOUNDARY;
     tmpStr += PSTR("\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n");
     tmpStr += PSTR("{\"name\":\"");
@@ -338,6 +338,8 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
     serialLogln();
     return true;
 }
+
+
 
 const char* GoogleDriveAPI::getFileName(int index)
 {
