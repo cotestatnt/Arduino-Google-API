@@ -11,7 +11,7 @@ DNSServer dnsServer;
 struct tm Time;
 
 #ifdef ESP8266
-  #include <LittleFS.h>  
+  #include <LittleFS.h>
   #include <ESP8266WiFi.h>
   #include <WiFiClient.h>
   #include <ESP8266WebServer.h>
@@ -23,23 +23,23 @@ struct tm Time;
 #elif defined(ESP32)
   // Sse FFat or SPIFFS with ESP32
   #include <FFat.h>
-  #include <WebServer.h>    
+  #include <WebServer.h>
   #define FILESYSTEM SPIFFS
   WiFiClientSecure client;
   WebServer server;
 #endif
 
 // WiFi setup
-const char* ssid = "xxxxxxxx";         // SSID WiFi network
-const char* password = "xxxxxxxx";     // Password  WiFi network
+const char* ssid = "xxxxxxxxx";         // SSID WiFi network
+const char* password = "xxxxxxxxx";     // Password  WiFi network
 const char* hostname = "gapi_esp";      // http://gapi_esp.local/
 
 // Google API OAuth2.0 client setup default values (you can change later with setup webpage)
-const char* client_id     =  "xxxxxxx-f9g6btf4ip5gexxxxxxxxxqvoa2srhf.apps.googleusercontent.com";
-const char* client_secret =  "xxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-const char* api_key       =  "xxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxx";
+const char* client_id     =  "xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com";
+const char* client_secret =  "xxxxxxxxxxxxxxxxxxxxx";
+const char* api_key       =  "xxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
 const char* scopes        =  "https://www.googleapis.com/auth/drive.file";
-const char* redirect_uri  =  "https://xxxxxxxxxxxx.m.pipedream.net";
+const char* redirect_uri  =  "https://xxxxxxxxxxxxxx.m.pipedream.net";
 
 const char* APP_FOLDERNAME = "DataFolder";   // Google Drive online folder name
 const char* dataFolderName = "/data";        // Local folder for store data files
@@ -52,8 +52,6 @@ bool runWebServer = false;
 
 #define MAX_NAME_LEN 16
 char dataFileName[MAX_NAME_LEN];          // ex. "20201025.txt"
-
-
 
 ////////////////////////////////  NTP Time  /////////////////////////////////////////
 void getUpdatedtime(const uint32_t timeout) {
@@ -90,11 +88,11 @@ void createDayFile(){
     // Create a file for each different day
     char path[10 + MAX_NAME_LEN];
     snprintf(path, 30, "%s/%s%c", dataFolderName, dataFileName, '\0' );
-    
+
     if( !FILESYSTEM.exists(dataFolderName)){
-        FILESYSTEM.mkdir(dataFolderName);   
+        FILESYSTEM.mkdir(dataFolderName);
     }
-    // Storage of a complete day data need at least 32Kb  (one measure once a minute)    
+    // Storage of a complete day data need at least 32Kb  (one measure once a minute)
     File dataFile =  FILESYSTEM.open(path, "w");
     if (!dataFile) {
         Serial.print(F("There was an error opening the file for writing - "));
@@ -105,7 +103,7 @@ void createDayFile(){
 
 // Append new row to local data file
 void appendMeasurement(){
-    getUpdatedtime(0);    
+    getUpdatedtime(0);
     uint32_t free;
     uint16_t max;
  #ifdef ESP32
@@ -114,7 +112,7 @@ void appendMeasurement(){
 #elif defined(ESP8266)
     ESP.getHeapStats(&free, &max, nullptr);
 #endif
-   
+
     // Update name of the data file if necessary
     snprintf(dataFileName, MAX_NAME_LEN, "%04d%02d%02d.txt", Time.tm_year+1900, Time.tm_mon+1, Time.tm_mday );
     char path[10 + MAX_NAME_LEN];
@@ -123,7 +121,7 @@ void appendMeasurement(){
         char dataBuf[30];
         snprintf(dataBuf, sizeof(dataBuf), "%02d:%02d:%02d; %5d; %5d",
             Time.tm_hour, Time.tm_min, Time.tm_sec, free, max);
-    
+
         File file = FILESYSTEM.open(path, "a");
         file.println(dataBuf);
         file.close();
@@ -131,7 +129,7 @@ void appendMeasurement(){
         Serial.println(dataBuf);
     }
     else
-        createDayFile();    
+        createDayFile();
 }
 
 // Upload local data file to Google Drive.
@@ -141,37 +139,36 @@ void uploadToDrive(){
 
     // Check if a file with same name is already present online and return id
     // (Google assume that file is different also if name is equal)
-    if(fileid.length() < 30) 
+    if(fileid.length() < 30)
         fileid = myDrive.searchFile(dataFileName);
 
-    String localPath = dataFolderName;
-    localPath += "/";
-    localPath += String(dataFileName);
+    String filePath = dataFolderName;
+    filePath += "/";
+    filePath += dataFileName;
 
     String uploadedId;
     if(fileid.length() > 30) {
-        Serial.print("\n\nFile present in app folder. \nCall update method for ");
-        Serial.println(localPath);
-        myDrive.uploadFile(localPath, fileid, true, uploadedId);
+        Serial.print(F("\n\nFile present in app folder. Call update method for "));
+        Serial.println(filePath);
+        uploadedId = myDrive.uploadFile(filePath, fileid);
     }
-    else {        
-        Serial.print("\n\nFile not present in app folder. Call upload method for");
-        Serial.println(localPath);
-        String appFolderId = myDrive.getAppFolderId();
-        myDrive.uploadFile(localPath, appFolderId, false, uploadedId);
+    else {
+        Serial.print(F("\n\nFile not present in app folder. Call upload method for "));
+        Serial.println(filePath);
+        uploadedId = myDrive.uploadFile(filePath.c_str(), myDrive.getAppFolderId(), false);
     }
 
-    if(uploadedId.length()){  
-        String text =  F("File uploaded to Drive with id "); 
+    if( uploadedId.length() ){
+        String text = F("File uploaded to Drive with id ");
         text += uploadedId;
         server.send(200, "text/plain", text);
         Serial.println(text);
     }
     else{
-        server.send(200, "text/plain", "Error");  
-        Serial.print("\nError. File not uploaded correctly.");
+        server.send(200, "text/plain", "Error");
+        Serial.print(F("\nError. File not uploaded correctly."));
     }
-    Serial.println("\n\nApp folder content:");
+    Serial.println(F("\n\nApp folder content:"));
     myDrive.printFileList();
 }
 
@@ -230,7 +227,7 @@ void startWiFi(){
 
 void setup(){
     Serial.begin(115200);
-    Serial.setDebugOutput(true);
+    //Serial.setDebugOutput(true);
     // FILESYSTEM init and load optins (ssid, password, etc etc)
     startFilesystem();
     // Set Google API certificate
@@ -249,28 +246,30 @@ void setup(){
 
     if (WiFi.isConnected()) {
         // Begin Google API handling (to store tokens and configuration, filesystem must be mounted before)
-        if (myDrive.begin(client_id, client_secret, scopes, api_key, redirect_uri)){
+        if (myDrive.begin(client_id, client_secret, scopes, api_key, redirect_uri)) {
             // Authorization OK when we have a valid token
             if (myDrive.getState() == GoogleOAuth2::GOT_TOKEN){
                 Serial.print(F("\n\n-------------------------------------------------------------------------------"));
                 Serial.print(F("\nYour application has the credentials to use the google API in the selected scope\n"));
                 Serial.print(F("\n---------------------------------------------------------------------------------\n\n"));
-                String appFolderId =  myDrive.searchFile(APP_FOLDERNAME);
-                // Save the folder id for easy retrieve when needed
-                myDrive.setAppFolderId(appFolderId);
-    
-                Serial.print("App folder id: ");
-                Serial.println(appFolderId);
-                if (appFolderId.length() >= 30 ) {  
-                    // A valid Google id founded 
-                    Serial.println("\n\nFile created with this app:");
+                String appFolderId = myDrive.searchFile(APP_FOLDERNAME);
+
+                if (appFolderId != "") {
+                    // A valid Google id founded
+                    Serial.print("App folder id: ");
+                    Serial.println(appFolderId);
+                    Serial.println("\nFolder APP found, file created with this app:");
                     myDrive.updateFileList();
                     myDrive.printFileList();
                 }
                 else {
-                    Serial.println("Folder APP not present. Now it will be created.");
-                    myDrive.createFolder(APP_FOLDERNAME, "root");
+                    Serial.println("\nFolder APP not found. Now it will be created. ");
+                    appFolderId = myDrive.createFolder(APP_FOLDERNAME, "root");
+                    Serial.print("New app folder id: ");
+                    Serial.println(appFolderId);
                 }
+                // Save the folder id for easy retrieve when needed
+                myDrive.setAppFolderId(appFolderId);
             }
         }
         if(myDrive.getState() == GoogleOAuth2::INVALID){
@@ -296,7 +295,7 @@ void setup(){
             dnsServer.start(53, F("*"), WiFi.softAPIP());
         }
         if (MDNS.begin(hostname)) {
-            Serial.println("MDNS responder started.\nOn Window you need to install service like Bonjour");
+            Serial.println("\nMDNS responder started.\nOn Window you need to install service like Bonjour");
             Serial.printf("You should be able to connect with address\t http://%s.local/\n", hostname);
         }
         myWebServer.begin();
@@ -312,7 +311,7 @@ void setup(){
         dnsServer.stop();
     }
 
-    // Update name of local data file 
+    // Update name of local data file
     snprintf(dataFileName, MAX_NAME_LEN, "%04d%02d%02d.txt", Time.tm_year+1900, Time.tm_mon+1, Time.tm_mday );
     // Append to the file the first measure on reboot
     appendMeasurement();
@@ -328,17 +327,17 @@ void loop(){
 
     // Add new measure once 5 seconds
     static uint32_t dataTime;
-    if(millis() - dataTime > 5000) {
-      dataTime = millis();
-      appendMeasurement();
+    if(millis() - dataTime > 10000) {
+        dataTime = millis();
+        appendMeasurement();
     }
 
     // Upload data file to Google Drive once a minute
     static uint32_t uploadTime;
-    if(millis() - uploadTime > 30000) {
-      uploadTime = millis();
-      uploadToDrive();
-      Serial.print("Upload time: ");
-      Serial.println(millis() - uploadTime);
+    if(millis() - uploadTime > 60000) {
+        uploadTime = millis();
+        uploadToDrive();
+        Serial.print("Upload time: ");
+        Serial.println(millis() - uploadTime);
     }
 }
