@@ -302,7 +302,6 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
     m_ggclient->print(tmpStr);
 
     uint8_t buff[BLOCK_SIZE];
-    uint32_t t1 = millis();
 
     while (myFile.available()) {
         yield();
@@ -319,9 +318,6 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
         }
     }
 
-    //m_ggclient->write(myFile);
-
-
     // uint16_t count = 0;
     // while (myFile.available()) {
     //     yield();
@@ -337,9 +333,6 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
 
     m_ggclient->print(END_BOUNDARY);
     myFile.close();
-
-    Serial.print("Internal upload time: ");
-    Serial.println(millis() - t1);
 
     serialLogln(END_BOUNDARY);
     serialLogln();
