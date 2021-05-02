@@ -116,7 +116,6 @@ int GoogleOAuth2::getState()
 
 bool GoogleOAuth2::doConnection( const char *host ){
     functionLog() ;
-
 	// Start connection with Telegramn server (if necessary)
     if (!m_ggclient->connected()) {
 
@@ -132,7 +131,6 @@ bool GoogleOAuth2::doConnection( const char *host ){
         }
     }
     return m_ggclient->connected();
-	
 }
 
 
@@ -263,13 +261,13 @@ const char* GoogleOAuth2::readggClient( bool keep_connection)
     while (m_ggclient->connected()) {
         String line = m_ggclient->readStringUntil('\n');
         if (line == "\r") {
-        // serialLogln(line);
-        break;
+            // serialLogln(line);
+            break;
         }
     }
     // get body content
     String res;
-    res.reserve(200);
+    res.reserve(1024);
     while (m_ggclient->available()) {
         String line = m_ggclient->readStringUntil('\n');
         serialLogln(line);
@@ -279,7 +277,6 @@ const char* GoogleOAuth2::readggClient( bool keep_connection)
         if(res.length() > 0){
             while (m_ggclient->available()) {
                 m_ggclient->read();
-                yield();
             }
             m_ggclient->stop();
             return res.c_str();

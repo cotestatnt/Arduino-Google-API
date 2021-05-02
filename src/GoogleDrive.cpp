@@ -87,26 +87,20 @@ String GoogleDriveAPI::readClient(const int filter, GoogleFile* gFile)
     functionLog() ;
 
     // Skip headers
-    if (m_ggclient->connected() && m_ggclient->available()) {
-        char endOfHeaders[] = "\r\n\r\n";
-		if (!m_ggclient->find(endOfHeaders)) {
-			serialLogln("Invalid HTTP response");
-			while (m_ggclient->available()) {
-                m_ggclient->read();
-            }
-			m_ggclient->stop();
-			return "";
-		}
+    while (m_ggclient->connected()) {
+        String line = m_ggclient->readStringUntil('\n');
+        if (line == "\r") {
+            serialLogln(line);
+            break;
+        }
     }
-
     // get body content
-    String val;
-    val.reserve(2048);
     while (m_ggclient->available()) {
         String line = m_ggclient->readStringUntil('\n');
         serialLogln(line);
 
         // Parse line only when lenght is congruent with expected data (skip braces an blank lines)
+        String val;
         if (line.length() > 10)
             val = parseLine(line, filter, gFile);
 
@@ -118,16 +112,14 @@ String GoogleDriveAPI::readClient(const int filter, GoogleFile* gFile)
             //m_ggclient->stop();
             return val;
         }
-
     }
-
     //m_ggclient->stop();
     return  "";
 }
 
 
 
-String GoogleDriveAPI::searchFile(const char *fileName, const char* parentId)
+const char* GoogleDriveAPI::searchFile(const char *fileName, const char* parentId)
 {
     functionLog() ;
     checkRefreshTime();
@@ -142,7 +134,11 @@ String GoogleDriveAPI::searchFile(const char *fileName, const char* parentId)
     }
 
     sendCommand("GET ", API_HOST, cmd.c_str(), "", true);
-    return readClient(SEARCH_ID);
+    //return  readClient(SEARCH_ID);
+
+    String resultId = readClient(SEARCH_ID);
+    strcpy(m_lookingForId, (char*) resultId.c_str());
+    return (const char*)m_lookingForId;
 }
 
 void GoogleDriveAPI::printFileList(){
@@ -188,15 +184,17 @@ const char* GoogleDriveAPI::createFolder(const char *folderName, const char *par
 
     sendCommand("POST ", API_HOST, "/drive/v3/files", body.c_str(), true);
     serialLogln("\nHTTP Response:");
+
     GoogleFile gFile;
-	String id = readClient(UPLOAD_ID, &gFile);
-    return id.c_str();
+    String resultId = readClient(UPLOAD_ID, &gFile);
+    strcpy(m_lookingForId, (char*) resultId.c_str());
+    return (const char*)m_lookingForId;
 }
 
 
 
 
-bool GoogleDriveAPI::uploadFile(const char* path, const char* folderId, bool isUpdate, String& _id)
+const char* GoogleDriveAPI::uploadFile(const char* path, const char* id,  bool isUpdate)
 {
     functionLog() ;
     checkRefreshTime();
@@ -205,10 +203,8 @@ bool GoogleDriveAPI::uploadFile(const char* path, const char* folderId, bool isU
     File myFile = m_filesystem->open(path, "r");
     if (!myFile) {
         Serial.printf("Failed to open file %s\n", path);
-        return nullptr;
+        return "";
     }
-
-    const char* fileid = folderId;
 
     char * pch = strrchr(path,'/');
     size_t name_len = strlen(path) - (pch - path) - 1;
@@ -216,30 +212,27 @@ bool GoogleDriveAPI::uploadFile(const char* path, const char* folderId, bool isU
     filename[name_len] = '\0';
     strncpy(filename, pch+1, name_len);
 
-    if(fileid != nullptr && isUpdate){
+    if(id != nullptr && isUpdate){
         serialLog("File already present, let's update it. ");
-        serialLogln(fileid);
-        sendMultipartFormData(path, filename, fileid, true);
+        serialLogln(id);
+        sendMultipartFormData(path, filename, id, true);
     }
     else {
         serialLog("\nCreate new file\n");
-        sendMultipartFormData(path, filename, folderId, false);
+        sendMultipartFormData(path, filename, id, false);
     }
 
     GoogleFile gFile;
-	_id = readClient(UPLOAD_ID, &gFile);
-	return _id.length();
-	
+    String resultId = readClient(UPLOAD_ID, &gFile);
+    strcpy(m_lookingForId, (char*) resultId.c_str());
+
+    return (const char*)m_lookingForId;
 }
 
-
-
-bool GoogleDriveAPI::uploadFile(String &path, String &folderId, bool isUpdate, String& _id)
+const char* GoogleDriveAPI::uploadFile(String &path, String &id, bool isUpdate)
  {
-    return uploadFile(path.c_str(), folderId.c_str(), isUpdate, _id);
+    return uploadFile(path.c_str(), id.c_str(), isUpdate);
  }
-
-
 
 bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filename, const char* id, bool update)
 {
@@ -272,7 +265,7 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
 
     tmpStr += PSTR(" HTTP/1.1\r\nHost: ");
     tmpStr += API_HOST;
-    tmpStr += PSTR("\r\nUser-Agent: arduino-esp\r\nConnection: keep-alive");
+    tmpStr += PSTR("\r\nUser-Agent: ESP32\r\nConnection: keep-alive");
 
     serialLogln();
     serialLog(tmpStr);
@@ -307,31 +300,51 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
 
     serialLog(tmpStr);
     m_ggclient->print(tmpStr);
-	
-    uint8_t buff[BLOCK_SIZE];
-	uint16_t count = 0;
-	while (myFile.available()) {
-		yield();
-		buff[count++] = (uint8_t)myFile.read();
-		if (count == BLOCK_SIZE ) {
-			m_ggclient->write((const uint8_t *)buff, BLOCK_SIZE);
-			count = 0;
-		}
-	}
-	if (count > 0) {
-		m_ggclient->write((const uint8_t *)buff, count);
-	}
-	
 
-	//m_ggclient->write(myFile);
-	m_ggclient->println(END_BOUNDARY);
+    uint8_t buff[BLOCK_SIZE];
+    uint32_t t1 = millis();
+
+    while (myFile.available()) {
+        yield();
+        if(myFile.available() > BLOCK_SIZE ){
+            myFile.read(buff, BLOCK_SIZE );
+            serialLogln("Sending block data buffer");
+            m_ggclient->write(buff, BLOCK_SIZE);
+        }
+        else {
+            serialLogln("Last data block ");
+            int b_size = myFile.available() ;
+            myFile.read(buff, b_size);
+            m_ggclient->write(buff, b_size);
+        }
+    }
+
+    //m_ggclient->write(myFile);
+
+
+    // uint16_t count = 0;
+    // while (myFile.available()) {
+    //     yield();
+    //     buff[count++] = (uint8_t)myFile.read();
+    //     if (count == BLOCK_SIZE ) {
+    //         m_ggclient->write((const uint8_t *)buff, BLOCK_SIZE);
+    //         count = 0;
+    //     }
+    // }
+    // if (count > 0) {
+    //     m_ggclient->write((const uint8_t *)buff, count);
+    // }
+
+    m_ggclient->print(END_BOUNDARY);
     myFile.close();
-	
+
+    Serial.print("Internal upload time: ");
+    Serial.println(millis() - t1);
+
     serialLogln(END_BOUNDARY);
     serialLogln();
     return true;
 }
-
 
 const char* GoogleDriveAPI::getFileName(int index)
 {
@@ -353,74 +366,3 @@ unsigned int  GoogleDriveAPI::getNumFiles()
     return m_filelist->size();
 }
 
-
-
-/*
-bool GoogleDriveAPI::sendDocument(uint32_t chat_id, const char* command, const char* contentType, const char* binaryPropertyName, Stream* stream, size_t size)
-{
-    #define BOUNDARY            "----WebKitFormBoundary7MA4YWxkTrZu0gW"
-    #define END_BOUNDARY        "\r\n--" BOUNDARY "--\r\n"
-
-    if (m_ggclient->connected()) {
-        m_waitingReply = true;
-
-        String formData((char *)0);
-        formData = "--" BOUNDARY;
-        formData += "\r\nContent-disposition: form-data; name=\"chat_id\"\r\n\r\n";
-        formData += chat_id;
-        formData += "\r\n--" BOUNDARY;
-        formData += "\r\nContent-disposition: form-data; name=\"";
-        formData += binaryPropertyName;
-        formData += "\"; filename=\"";
-        formData += "image.jpg";
-        formData += "\"\r\nContent-Type: ";
-        formData += contentType;
-        formData += "\r\n\r\n";
-        int contentLength = size + formData.length() + strlen(END_BOUNDARY);
-
-        String request((char *)0);
-        request = "POST /bot";
-        request += m_token;
-        request += "/";
-        request += command;
-        request += " HTTP/1.1\r\nHost: " TELEGRAM_HOST;
-        request += "\r\nContent-Length: ";
-        request += contentLength;
-        request += "\r\nContent-Type: multipart/form-data; boundary=" BOUNDARY "\r\n";
-		
-		
-
-        // Send POST request to host
-        m_ggclient->println(request);
-
-        // Body of request
-        m_ggclient->print(formData);
-
-        // uint32_t t1 = millis();
-        uint8_t buff[BLOCK_SIZE];
-        uint16_t count = 0;
-        while (stream->available()) {
-            yield();
-            buff[count++] = (uint8_t)stream->read();
-            if (count == BLOCK_SIZE ) {
-                //log_debug("\nSending binary photo full buffer");
-                m_ggclient->write((const uint8_t *)buff, BLOCK_SIZE);
-                count = 0;
-                m_lastmsg_timestamp = millis();
-            }
-        }
-        if (count > 0) {
-            //log_debug("\nSending binary photo remaining buffer");
-            m_ggclient->write((const uint8_t *)buff, count);
-        }
-
-        m_ggclient->print(END_BOUNDARY);
-    }
-    else {
-        Serial.println("\nError: client not connected");
-        return false;
-    }
-    return true;
-}
-
-*/

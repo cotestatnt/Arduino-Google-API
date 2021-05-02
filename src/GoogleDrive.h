@@ -24,23 +24,26 @@ public:
     inline char* getAppFolderId(){ return m_appFolderId; }
 
     // return the google ID  for files or folder
-    const char*   createFolder(const char *folderName, const char *parent, bool isName = false);
-    String  searchFile(const char *fileName,  const char* parentId = nullptr);
-    inline String  searchFile(String& fileName,  String& parentId) { return searchFile(fileName.c_str(), parentId.c_str()); }
-    inline String  searchFile(String& fileName ) { return searchFile(fileName.c_str(), nullptr); }
+    const char*  createFolder(const char *folderName, const char *parent, bool isName = false);
+    const char*  searchFile(const char *fileName,  const char* parentId = nullptr);
+
+    // inline String  searchFile(String& fileName,  String& parentId) { return searchFile(fileName.c_str(), parentId.c_str()); }
+    // inline String  searchFile(String& fileName ) { return searchFile(fileName.c_str(), nullptr); }
 
     bool    updateFileList();
     void    printFileList();
 
     // Upload or update file
-    bool uploadFile(const char* path, const char* folderId, bool isUpdate, String& _id );
-    bool uploadFile(String &path, String &folderId, bool isUpdate, String& _id);
+    const char* uploadFile( const char* path, const char* id, bool isUpdate = true);
+    const char* uploadFile( String &path, String &id, bool isUpdate = true);
 
 protected:
     enum {WAIT_FILE, SAVE_ID, SAVE_NAME, SAVE_TYPE, SEARCH_ID, UPLOAD_ID, NEW_FILE};
 
     GoogleFilelist* m_filelist;
-    char* m_appFolderId = (char*)"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"; // 33 random chars
+    // init var with 50 chars length (max file id len should be 44)
+    char* m_appFolderId = (char*) "**************************************************";
+    char* m_lookingForId = (char*) "**************************************************";
     bool sendMultipartFormData(const char* path, const char* filename, const char* id, bool update = false);
     String readClient(const int expected, GoogleFile* gFile = nullptr );
     String parseLine(String &line, const int filter, GoogleFile* gFile );

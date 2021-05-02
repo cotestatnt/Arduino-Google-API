@@ -14,24 +14,24 @@ void GoogleFilelist::clearList(){
 void GoogleFilelist::addFile(const char* _name, const char* _id,  bool _isFolder){
 
     if(strlen(_id) < 30){
-        return;     // Data not vali!    
+        return;     // Data not vali!
     }
-	
+
 	for(GoogleFile *_file = _firstFile; _file != nullptr; _file = _file->nextFile){
         if( strcmp(_file->id, _id)==0 )
-            return;		// File with provide id already present in list       	
+            return;		// File with provide id already present in list
 	}
-	
+
     GoogleFile *thisFile = new GoogleFile();
-	if (_firstFile != nullptr) 
-        _lastFile->nextFile = thisFile;		
+	if (_firstFile != nullptr)
+        _lastFile->nextFile = thisFile;
 	else
-        _firstFile = thisFile;		
+        _firstFile = thisFile;
 
     _lastFile = thisFile;
 	_filesCount++;
 	thisFile->name = strdup(_name);
-    thisFile->id =  strdup(_id);;	
+    thisFile->id =  strdup(_id);;
     thisFile->isFolder = _isFolder;
 }
 
@@ -47,7 +47,7 @@ const char* GoogleFilelist::getFileName(int index){
     for(GoogleFile *_file = _firstFile; _file != nullptr; _file = _file->nextFile){
         if(counter == index)
             return _file->name;
-        counter++;		
+        counter++;
 	}
     return nullptr;
 }
@@ -57,35 +57,35 @@ const char* GoogleFilelist::getFileId(int index){
     for(GoogleFile *_file = _firstFile; _file != nullptr; _file = _file->nextFile){
         if(counter == index)
             return _file->id;
-        counter++;		
+        counter++;
 	}
     return nullptr;
 }
 
 const char* GoogleFilelist::getFileId(const char* name){
     for(GoogleFile *_file = _firstFile; _file != nullptr; _file = _file->nextFile){
-        if( strcmp(_file->name, name)==0  )	
-            return _file->id;        	
+        if( strcmp(_file->name, name)==0  )
+            return _file->id;
 	}
     return nullptr;
 }
 
 
-bool GoogleFilelist::isFolder(int index){    
+bool GoogleFilelist::isFolder(int index){
     int counter = 0;
     for(GoogleFile *_file = _firstFile; _file != nullptr; _file = _file->nextFile){
         if (_file->isFolder && counter == index)
             return true;
-        counter++;	
+        counter++;
 	}
     return false;
 }
 
 
-bool GoogleFilelist::isFolder(const char* name){        
+bool GoogleFilelist::isFolder(const char* name){
     for(GoogleFile *_file = _firstFile; _file != nullptr; _file = _file->nextFile){
         if (_file->isFolder && strcmp(_file->name, name)==0)
-            return true;        
+            return true;
 	}
     return false;
 }
@@ -99,9 +99,9 @@ GoogleFilelist* GoogleFilelist::getList(){
 void GoogleFilelist::printList(){
     for(GoogleFile *_file = _firstFile; _file != nullptr; _file = _file->nextFile){
         if (_file->isFolder)
-            Serial.print("folder: ");
+            Serial.print("folder:\t");
         else
-            Serial.print("file:   "); 
+            Serial.print("file:\t");
         Serial.print(_file->name);
         Serial.print("\t ");
         Serial.println(_file->id);

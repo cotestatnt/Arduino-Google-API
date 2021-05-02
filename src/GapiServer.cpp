@@ -155,12 +155,11 @@ void GapiServer::handleScanNetworks() {
     for (int i = 0; i < n; ++i) {
         String ssid = WiFi.SSID(i);
         int rssi = WiFi.RSSI(i);
-
-#ifdef ESP8266
-		String security = WiFi.encryptionType(i) == AUTH_OPEN ? "none" : "enabled";
-#elif defined(ESP32)
-		String security = WiFi.encryptionType(i) == WIFI_AUTH_OPEN ? "none" : "enabled";
-#endif
+    #if defined(ESP8266)
+        String security = WiFi.encryptionType(i) == AUTH_OPEN ? "none" : "enabled";
+    #elif defined(ESP32)
+        String security = WiFi.encryptionType(i) == WIFI_AUTH_OPEN ? "none" : "enabled";
+    #endif
         jsonList += "{\"ssid\":\"";
         jsonList += ssid;
         jsonList += "\",\"strength\":\"";
