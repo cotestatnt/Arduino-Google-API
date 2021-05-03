@@ -29,7 +29,7 @@ You can simply skip for testing purpose or if you don't need to redistribute: ju
 As you can read in the Google documentation, for this authorization scenario it is necessary un authorized redirect URI as endpoints to which the OAuth 2.0 server can send the generated tokens.
 If you own a top-level host, i've written a small php script and you can upload it on your server and use it as redirect uri.
 
-Another good option for redirect uri, is using a micro-service like [pipedream.com](pipedream.com) for example. 
+Another good option for redirect uri, is using a micro-service like [pipedream.com](https://pipedream.com/) for example. 
 The free plan will be largely sufficient for most cases (remember, you will need only once time for user). This is my pipedream [working workflow](https://pipedream.com/@cotestatnt/smart-air-p_mkCk3JW), feel free to copy and use for your convenience.
 The redirect uri to be used will be the one generated when you deploy your workflow (something like xxxxxxxxxx.m.pipedream.net).
 
