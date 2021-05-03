@@ -22,7 +22,9 @@ struct tm Time;
   #define FILESYSTEM LittleFS
 #elif defined(ESP32)
   // Sse FFat or SPIFFS with ESP32
-  #include <FFat.h>
+  #include <SPIFFS.h>
+  #include <WiFi.h>
+  #include <WiFiClientSecure.h>
   #include <WebServer.h>
   #define FILESYSTEM SPIFFS
   WiFiClientSecure client;
