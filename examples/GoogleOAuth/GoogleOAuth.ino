@@ -7,7 +7,7 @@
 DNSServer dnsServer;
 
 #ifdef ESP8266
-  #include <LittleFS.h>  
+  #include <LittleFS.h>
   #include <ESP8266WiFi.h>
   #include <WiFiClient.h>
   #include <ESP8266WebServer.h>
@@ -18,8 +18,10 @@ DNSServer dnsServer;
   #define FILESYSTEM LittleFS
 #elif defined(ESP32)
   // Sse FFat or SPIFFS with ESP32
-  #include <FFat.h>
-  #include <WebServer.h>    
+  #include <SPIFFS.h>
+  #include <WiFi.h>
+  #include <WiFiClientSecure.h>
+  #include <WebServer.h>
   #define FILESYSTEM SPIFFS
   WiFiClientSecure client;
   WebServer server;
