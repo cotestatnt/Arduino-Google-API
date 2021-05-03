@@ -202,7 +202,7 @@ bool GoogleSheetAPI::updateSheetList(String& query){
     m_sheetlist->clearList();
     sendCommand("GET ", API_DRIVE_HOST, cmd.c_str(), "", true);
     GoogleFile gSheet;
-    const char * res = GoogleDriveAPI::readClient(WAIT_FILE, &gSheet).c_str();
+    const char * res = GoogleDriveAPI::readClient(WAIT_FILE, &gSheet);
     if (strstr(res, "error") != NULL){
         return false;
     }

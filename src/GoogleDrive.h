@@ -43,9 +43,9 @@ protected:
     GoogleFilelist* m_filelist;
     // init var with 50 chars length (max file id len should be 44)
     char* m_appFolderId = (char*) "**************************************************";
-    char* m_lookingForId = (char*) "**************************************************";
+    char m_lookingForId[128];
     bool sendMultipartFormData(const char* path, const char* filename, const char* id, bool update = false);
-    String readClient(const int expected, GoogleFile* gFile = nullptr );
+    const char* readClient(const int expected, GoogleFile* gFile = nullptr );
     String parseLine(String &line, const int filter, GoogleFile* gFile );
 
     String uploadFileName;

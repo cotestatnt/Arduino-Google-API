@@ -73,7 +73,9 @@ public:
     void printConfig() const;
     void clearConfig();
 	const char* getUserCode();
-
+    inline bool isAuthorized() {
+        return (getState() == GOT_TOKEN);
+    }
 
 protected:
 

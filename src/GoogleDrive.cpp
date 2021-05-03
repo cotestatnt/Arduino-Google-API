@@ -82,10 +82,10 @@ String GoogleDriveAPI::parseLine(String &line, const int filter, GoogleFile* gFi
     return "";
 }
 
-String GoogleDriveAPI::readClient(const int filter, GoogleFile* gFile)
+const char* GoogleDriveAPI::readClient(const int filter, GoogleFile* gFile)
 {
     functionLog() ;
-
+    String val = "";
     // Skip headers
     while (m_ggclient->connected()) {
         String line = m_ggclient->readStringUntil('\n');
@@ -100,7 +100,6 @@ String GoogleDriveAPI::readClient(const int filter, GoogleFile* gFile)
         serialLogln(line);
 
         // Parse line only when lenght is congruent with expected data (skip braces an blank lines)
-        String val;
         if (line.length() > 10)
             val = parseLine(line, filter, gFile);
 
@@ -108,13 +107,16 @@ String GoogleDriveAPI::readClient(const int filter, GoogleFile* gFile)
         if(val.length()){
             while (m_ggclient->available()) {
                 m_ggclient->read();
+                yield();
             }
-            //m_ggclient->stop();
-            return val;
         }
     }
     //m_ggclient->stop();
-    return  "";
+
+    if(val.length() == 0)
+        memset(m_lookingForId, '\0', sizeof(m_lookingForId));
+    strcpy(m_lookingForId, val.c_str());
+    return (const char*)m_lookingForId;
 }
 
 
@@ -123,6 +125,9 @@ const char* GoogleDriveAPI::searchFile(const char *fileName, const char* parentI
 {
     functionLog() ;
     checkRefreshTime();
+
+    if(!isAuthorized())
+        return nullptr;
 
     String cmd = F("/drive/v3/files?q=trashed=false%20and%20name%20=%20'");
     cmd += fileName;
@@ -136,8 +141,8 @@ const char* GoogleDriveAPI::searchFile(const char *fileName, const char* parentI
     sendCommand("GET ", API_HOST, cmd.c_str(), "", true);
     //return  readClient(SEARCH_ID);
 
-    String resultId = readClient(SEARCH_ID);
-    strcpy(m_lookingForId, (char*) resultId.c_str());
+    const char* resultId = readClient(SEARCH_ID);
+    strcpy(m_lookingForId, resultId);
     return (const char*)m_lookingForId;
 }
 
@@ -148,6 +153,9 @@ void GoogleDriveAPI::printFileList(){
 bool GoogleDriveAPI::updateFileList(){
     functionLog() ;
 
+    if(!isAuthorized())
+        return false;
+
     if(m_filelist == nullptr){
         Serial.println("error: the class was initialized without GoogleFilelist object");
         return false;
@@ -157,7 +165,7 @@ bool GoogleDriveAPI::updateFileList(){
     m_filelist->clearList();
     sendCommand("GET ", API_HOST, "/drive/v3/files?orderBy=folder,name&q=trashed=false", "", true);
     GoogleFile gFile;
-    const char * res = readClient(WAIT_FILE, &gFile).c_str();
+    const char * res = readClient(WAIT_FILE, &gFile);
     if (strstr(res, "error") != NULL){
         return false;
     }
@@ -171,6 +179,10 @@ const char* GoogleDriveAPI::createFolder(const char *folderName, const char *par
 {
     functionLog() ;
     checkRefreshTime();
+
+    if(!isAuthorized())
+        return nullptr;
+
     String parentId;
     isName ? parentId = searchFile(parent) : parentId = parent;
 
@@ -186,8 +198,8 @@ const char* GoogleDriveAPI::createFolder(const char *folderName, const char *par
     serialLogln("\nHTTP Response:");
 
     GoogleFile gFile;
-    String resultId = readClient(UPLOAD_ID, &gFile);
-    strcpy(m_lookingForId, (char*) resultId.c_str());
+    const char* resultId = readClient(UPLOAD_ID, &gFile);
+    strcpy(m_lookingForId, resultId);
     return (const char*)m_lookingForId;
 }
 
@@ -199,9 +211,12 @@ const char* GoogleDriveAPI::uploadFile(const char* path, const char* id,  bool i
     functionLog() ;
     checkRefreshTime();
 
+    if(!isAuthorized())
+        return nullptr;
+
     #define BOUNDARY_UPLOAD "APP_UPLOAD_DATA"
     File myFile = m_filesystem->open(path, "r");
-    if (!myFile) {
+    if (!myFile || !m_filesystem->exists(path) ) {
         Serial.printf("Failed to open file %s\n", path);
         return "";
     }
@@ -223,8 +238,8 @@ const char* GoogleDriveAPI::uploadFile(const char* path, const char* id,  bool i
     }
 
     GoogleFile gFile;
-    String resultId = readClient(UPLOAD_ID, &gFile);
-    strcpy(m_lookingForId, (char*) resultId.c_str());
+    const char* resultId = readClient(UPLOAD_ID, &gFile);
+    strcpy(m_lookingForId, resultId);
 
     return (const char*)m_lookingForId;
 }
