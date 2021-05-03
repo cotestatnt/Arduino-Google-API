@@ -41,17 +41,17 @@ DNSServer dnsServer;
   BearSSL::WiFiClientSecure client;
   BearSSL::Session   session;
   BearSSL::X509List  certificate(google_cert);
-
   #define FILESYSTEM LittleFS
 #elif defined(ESP32)
   // Sse FFat or SPIFFS with ESP32
-  #include <FFat.h>
+  #include <SPIFFS.h>
+  #include <WiFi.h>
+  #include <WiFiClientSecure.h>
   #include <WebServer.h>
   #define FILESYSTEM SPIFFS
   WiFiClientSecure client;
   WebServer server;
 #endif
-
 
 struct tm Time;
 const char* formulaExample = "\"=IF(ISNUMBER(B:B); B:B - C:C;)\"";
