@@ -36,16 +36,16 @@ struct tm Time;
 
 
 // WiFi setup
-const char* ssid = "PuccosNET";         // SSID WiFi network
-const char* password = "Tole76tnt";     // Password  WiFi network
+const char* ssid = "xxxxxxxxxx";         // SSID WiFi network
+const char* password = "xxxxxxxxxx";     // Password  WiFi network
 const char* hostname = "gapi_esp";      // http://gapi_esp.local/
 
 // Google API OAuth2.0 client setup default values (you can change later with setup webpage)
-const char* client_id     =  "408231038603-f9g6btf4ip5ge3guv944q01qvoa2srhf.apps.googleusercontent.com";
-const char* client_secret =  "jb7XS8CMqgSsMUuldZm3LfJG";
-const char* api_key       =  "AIzaSyB-kUJQOcFya2Ls7qMlofObXhsECs2e3i0";
+const char* client_id     =  "xxxxxxxxxxxx-f9g6btf4ip5gexxxxxxxxq01qvoa2srhf.apps.googleusercontent.com";
+const char* client_secret =  "xxxxxxxxxxxxxxxxxxxxxxxx";
+const char* api_key       =  "xxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
 const char* scopes        =  "https://www.googleapis.com/auth/drive.file";
-const char* redirect_uri  =  "https://enyi3pe1qtnnvz9.m.pipedream.net";
+const char* redirect_uri  =  "https://XXXXXXXXXXXXXXXX.m.pipedream.net";
 
 const char* APP_FOLDERNAME = "DataFolder";   // Google Drive online folder name
 const char* dataFolderName = "/data";        // Local folder for store data files
