@@ -1,29 +1,3 @@
-#define HOSTNAME    "esp2sheet"     // Setting hostname, you can access to http://HOSTNAME.local instead fixed ip address
-#define FOLDER_NAME  "SheetFolder"
-#define S_FILENAME   "myTestSheet"
-#define SHEETNAME    "datasource"
-
-String hostname = HOSTNAME;
-String folderName = FOLDER_NAME;
-String spreadSheetName = S_FILENAME;
-String sheetName = SHEETNAME;
-unsigned long updateInterval = 30000;           // Add row to sheet every x seconds
-
-// WiFi setup
-const char* ssid = "xxxxxxxxx";         // SSID WiFi network
-const char* password = "xxxxxxxxx";     // Password  WiFi network
-
-// Google API OAuth2.0 client setup default values (you can change later with setup webpage)
-const char* client_id     =  "xxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com";
-const char* client_secret =  "xxxxxxxxxxxxxxxxxxxxxx";
-const char* api_key       =  "xxxxx-xxxxxxxxxxxxxxxxxxxxxxxx";
-const char* scopes        =  "https://www.googleapis.com/auth/drive.file "
-                             "https://www.googleapis.com/auth/spreadsheets ";
-const char* redirect_uri  =  "https://xxxxxxxxxxxxx.m.pipedream.net";
-
-// Timezone definition to get properly time from NTP server
-#define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
-
 #include <FS.h>
 #include <time.h>
 #include <sys/time.h>
@@ -32,8 +6,16 @@ const char* redirect_uri  =  "https://xxxxxxxxxxxxx.m.pipedream.net";
 #include <DNSServer.h>
 DNSServer dnsServer;
 
+#ifndef LED_BUILTIN
+#define LED_BUILTIN 2
+#endif
+
+// Timezone definition to get properly time from NTP server
+#define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
+struct tm Time;
+
 #ifdef ESP8266
-  #include <LittleFS.h>
+  #include <LittleFS.h>  
   #include <ESP8266WiFi.h>
   #include <WiFiClient.h>
   #include <ESP8266WebServer.h>
@@ -44,16 +26,36 @@ DNSServer dnsServer;
   #define FILESYSTEM LittleFS
 #elif defined(ESP32)
   // Sse FFat or SPIFFS with ESP32
-  #include <SPIFFS.h>
-  #include <WiFi.h>
+  #include <FFat.h>
   #include <WiFiClientSecure.h>
-  #include <WebServer.h>
-  #define FILESYSTEM SPIFFS
+  #include <WebServer.h>    
+  #define FILESYSTEM FFat
   WiFiClientSecure client;
   WebServer server;
 #endif
 
-struct tm Time;
+#define HOSTNAME    "esp2sheet"     // Setting hostname, you can access to http://HOSTNAME.local instead fixed ip address
+#define FOLDER_NAME  "SheetFolder"
+#define S_FILENAME   "myTestSheet"
+#define SHEETNAME    "datasource"
+
+// WiFi setup
+const char* ssid = "xxxxxxxx";         // SSID WiFi network
+const char* password = "xxxxxxxxx";     // Password  WiFi network
+
+String hostname = HOSTNAME;
+String folderName = FOLDER_NAME;
+String spreadSheetName = S_FILENAME;
+String sheetName = SHEETNAME;
+unsigned long updateInterval = 60000;           // Add row to sheet every x seconds
+
+// Google API OAuth2.0 client setup default values (you can change later with setup webpage)
+const char* client_id     =  "xxxxxxxxxxxx-f9g6btf4ip5gexxxxxxxxq01qvoa2srhf.apps.googleusercontent.com";
+const char* client_secret =  "xxxxxxxxxxxxxxxxxxxxxxxx";
+const char* api_key       =  "xxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+const char* scopes        =  "https://www.googleapis.com/auth/drive.file "
+                             "https://www.googleapis.com/auth/spreadsheets ";
+const char* redirect_uri  =  "https://XXXXXXXXXXXXXXXX.m.pipedream.net";
 const char* formulaExample = "\"=IF(ISNUMBER(B:B); B:B - C:C;)\"";
 
 GoogleSheetAPI mySheet(FILESYSTEM, client );
@@ -192,7 +194,7 @@ void setup(){
     // FILESYSTEM init and load optins (ssid, password, etc etc)
     startFilesystem();
     //loadApplicationConfig();
-
+    
     // Set Google API certificate
     #ifdef ESP8266
         client.setSession(&session);
@@ -203,7 +205,7 @@ void setup(){
         client.setCACert(google_cert);
         WiFi.setHostname(hostname.c_str());
     #endif
-
+  
     // WiFi INIT
     startWiFi();
 
@@ -322,13 +324,11 @@ void loop() {
             strftime (buffer, sizeof(buffer), "\"%d/%m/%Y %H:%M:%S\"", &Time);
             char row[200];
             snprintf(row, sizeof(row), "[%s, %d, %d, %s]", buffer, free, max, formulaExample);
-
             String range = sheetName;
             range += "!A1";
-            if( mySheet.appendRowToSheet( mySheet.getSheetId(), range.c_str(), row)) {
+            if( mySheet.appendRowToSheet( mySheet.getSheetId(), range.c_str(), row) ) {
                 Serial.printf("New row appended to %s::%s succesfully\n", spreadSheetName.c_str(), sheetName.c_str());
             }
-
             printHeapStats();
         }
     }

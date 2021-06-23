@@ -34,32 +34,30 @@ struct tm Time;
   WebServer server;
 #endif
 
-
 // WiFi setup
-const char* ssid = "PuccosNET";         // SSID WiFi network
-const char* password = "Tole76tnt";     // Password  WiFi network
+const char* ssid = "xxxxxxxxxxx";       // SSID WiFi network
+const char* password = "xxxxxxxxxxx";   // Password  WiFi network
 const char* hostname = "gapi_esp";      // http://gapi_esp.local/
 
 // Google API OAuth2.0 client setup default values (you can change later with setup webpage)
-const char* client_id     =  "408231038603-f9g6btf4ip5ge3guv944q01qvoa2srhf.apps.googleusercontent.com";
-const char* client_secret =  "jb7XS8CMqgSsMUuldZm3LfJG";
-const char* api_key       =  "AIzaSyB-kUJQOcFya2Ls7qMlofObXhsECs2e3i0";
+const char* client_id     =  "xxxxxxxxxxxx-f9g6btf4ip5gexxxxxxxxq01qvoa2srhf.apps.googleusercontent.com";
+const char* client_secret =  "xxxxxxxxxxxxxxxxxxxxxxxx";
+const char* api_key       =  "xxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
 const char* scopes        =  "https://www.googleapis.com/auth/drive.file";
-const char* redirect_uri  =  "https://enyi3pe1qtnnvz9.m.pipedream.net";
+const char* redirect_uri  =  "https://XXXXXXXXXXXXXXXX.m.pipedream.net";
 
 const char* APP_FOLDERNAME = "DataFolder";   // Google Drive online folder name
 const char* dataFolderName = "/data";        // Local folder for store data files
 
+
 GoogleFilelist driveList;
 GoogleDriveAPI myDrive(FILESYSTEM, client, &driveList );
-GapiServer myWebServer(FILESYSTEM, server);
+FSWebServer myWebServer(FILESYSTEM, server);
 bool apMode = true;
 bool runWebServer = false;
 
 #define MAX_NAME_LEN 16
-char dataFileName[MAX_NAME_LEN];          // ex. "20201025.txt"
-
-
+char dataFileName[MAX_NAME_LEN+1];          // ex. "20201025.txt"
 
 ////////////////////////////////  NTP Time  /////////////////////////////////////////
 void getUpdatedtime(const uint32_t timeout) {
@@ -78,16 +76,8 @@ void printHeapStats() {
     heapTime = millis();
     time_t now = time(nullptr);
     Time = *localtime(&now);
-#ifdef ESP32
     Serial.printf("%02d:%02d:%02d - Total free: %6d - Max block: %6d\n",
       Time.tm_hour, Time.tm_min, Time.tm_sec, heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0) );
-#elif defined(ESP8266)
-    uint32_t free;
-    uint16_t max;
-    ESP.getHeapStats(&free, &max, nullptr);
-    Serial.printf("%02d:%02d:%02d - Total free: %5d - Max block: %5d\n",
-      Time.tm_hour, Time.tm_min, Time.tm_sec, free, max);
-#endif
   }
 }
 
@@ -114,13 +104,9 @@ void appendMeasurement(){
     getUpdatedtime(0);    
     uint32_t free;
     uint16_t max;
- #ifdef ESP32
     free = heap_caps_get_free_size(0);
     max = heap_caps_get_largest_free_block(0);
-#elif defined(ESP8266)
-    ESP.getHeapStats(&free, &max, nullptr);
-#endif
-   
+  
     // Update name of the data file if necessary
     snprintf(dataFileName, MAX_NAME_LEN, "%04d%02d%02d.txt", Time.tm_year+1900, Time.tm_mon+1, Time.tm_mday );
     char path[10 + MAX_NAME_LEN];
@@ -141,7 +127,9 @@ void appendMeasurement(){
 }
 
 // Upload local data file to Google Drive.
-void uploadToDrive(){
+void uploadToDrive(void * args) {  
+    uint32_t startUpload = millis();
+  
     // Check if file is already in file list (local)
     String fileid = myDrive.getFileId(dataFileName);
 
@@ -177,8 +165,15 @@ void uploadToDrive(){
         server.send(200, "text/plain", "Error");  
         Serial.print("\nError. File not uploaded correctly.");
     }
+
+    Serial.print("Upload time: ");
+    Serial.println(millis() - startUpload);
+    
     Serial.println("\n\nApp folder content:");
     myDrive.printFileList();
+    
+    // Delete this task on exit (should never occurs)
+    vTaskDelete(NULL);
 }
 
 
@@ -218,13 +213,8 @@ void startWiFi(){
             Serial.print("\nConnected! IP address: ");
             Serial.println(WiFi.localIP());
             // Set hostname, timezone and NTP servers
-        #ifdef ESP8266
-            WiFi.hostname(hostname);
-            configTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
-        #elif defined(ESP32)
             WiFi.setHostname(hostname);
-            configTzTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
-        #endif
+            configTzTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");        
             // Sync time with NTP. Blocking, but with timeout (0 == no timeout)
             getUpdatedtime(10000);
             char nowTime[30];
@@ -234,22 +224,18 @@ void startWiFi(){
     }
 }
 
-void setup(){
+void setup() {
+    pinMode(LED_BUILTIN, OUTPUT);
     Serial.begin(115200);
     Serial.setDebugOutput(true);
+    
     // FILESYSTEM init and load optins (ssid, password, etc etc)
     startFilesystem();
+
     // Set Google API certificate
-#ifdef ESP8266
-    //client.setNoDelay(1);
-    client.setSession(&session);
-    client.setTrustAnchors(&certificate);
-    client.setBufferSizes(1024, 2048);
-    WiFi.hostname(hostname);
-#elif defined(ESP32)
     client.setCACert(google_cert);
     WiFi.setHostname(hostname);
-#endif
+
     // WiFi INIT
     startWiFi();
 
@@ -309,9 +295,6 @@ void setup(){
         while(apMode) {
             dnsServer.processNextRequest();
             myWebServer.run();
-            #ifdef ESP8266
-            MDNS.update();
-            #endif
             yield();
             apMode = WiFi.status() != WL_CONNECTED;
         }
@@ -321,12 +304,16 @@ void setup(){
     // Update name of local data file 
     snprintf(dataFileName, MAX_NAME_LEN, "%04d%02d%02d.txt", Time.tm_year+1900, Time.tm_mon+1, Time.tm_mday );
     // Append to the file the first measure on reboot
-    appendMeasurement();
-
-    //uploadToDrive();
+    appendMeasurement();   
 }
 
 void loop(){
+
+    static uint32_t ledTime = millis();
+    if (millis() - ledTime > 150) {
+      ledTime = millis();
+      digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+    }
 
     // Run webserver (just for debug, not needed after first configuration)
     if(runWebServer)
@@ -343,8 +330,14 @@ void loop(){
     static uint32_t uploadTime;
     if(millis() - uploadTime > 60000) {
       uploadTime = millis();
-      uploadToDrive();
-      Serial.print("Upload time: ");
-      Serial.println(millis() - uploadTime);
+      // Start uploadToDrive in a parallel task
+      xTaskCreate(
+        uploadToDrive,    // Function to implement the task
+        "uploadToDrive",  // Name of the task
+        8192,             // Stack size in words
+        NULL,             // Task input parameter
+        1,                // Priority of the task
+        NULL              // Task handle.
+      );      
     }
 }

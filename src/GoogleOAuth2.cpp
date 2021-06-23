@@ -192,7 +192,7 @@ void GoogleOAuth2::sendCommand(const char *const &rest, const char *const &host,
 }
 
 
-String GoogleOAuth2::parseLine(String &line, const char *filter = nullptr)
+String GoogleOAuth2::parseLine(String &line)
 {
 
     /*
@@ -253,7 +253,7 @@ String GoogleOAuth2::parseLine(String &line, const char *filter = nullptr)
 }
 
 
-const char* GoogleOAuth2::readggClient( bool keep_connection)
+void GoogleOAuth2::readggClient( String &payload, bool keep_connection)
 {
     functionLog() ;
 
@@ -266,20 +266,16 @@ const char* GoogleOAuth2::readggClient( bool keep_connection)
         }
     }
     // get body content
-    String res;
-    res.reserve(1024);
     while (m_ggclient->available()) {
         String line = m_ggclient->readStringUntil('\n');
         serialLogln(line);
-        res = parseLine( line);
+        payload = parseLine(line);
 
         // value found in json response (skip all the remaining bytes)
-        if(res.length() > 0){
+        if(payload.length() > 0){
             while (m_ggclient->available()) {
                 m_ggclient->read();
-            }
-            m_ggclient->stop();
-            return res.c_str();
+            }            
         }
 
     }
@@ -287,8 +283,7 @@ const char* GoogleOAuth2::readggClient( bool keep_connection)
     // Speed up some steps (for example during authentication procedure or renew of access tokem)
     // Otherwise close connection and release memory
     if(!keep_connection)
-        m_ggclient->stop();
-    return res.c_str();
+        m_ggclient->stop();    
 }
 
 
@@ -313,7 +308,8 @@ bool GoogleOAuth2::isAccessTokenValid()
     outStr += readParam("access_token");
 
     sendCommand("GET ", AUTH_HOST, outStr.c_str(), "");
-    String res = readggClient(true);
+    String res;
+	readggClient(res, true);
     if (res.indexOf("error") > -1){
         Serial.println(res);
         return false;
@@ -337,7 +333,8 @@ bool GoogleOAuth2::refreshToken( bool stopClient)
     body += F("\"}");
 
     sendCommand("POST ", AUTH_HOST, "/token", body.c_str(), false);
-    String res = readggClient(stopClient);
+	String res;
+	readggClient(res, stopClient);
     if (res.indexOf("error") > -1){
         Serial.println(res);
         m_ggstate = INVALID;
@@ -357,7 +354,8 @@ bool GoogleOAuth2::requestDeviceCode()
     body += F("\"}");
 
     sendCommand("POST ", AUTH_HOST, "/device/code", body.c_str());
-    String res = readggClient(true);
+    String res;
+	readggClient(res, true);	
     if (res.indexOf(F("error")) > -1){
         Serial.println(res);
         return false;
@@ -386,7 +384,8 @@ bool GoogleOAuth2::pollingAuthorize()
 
     sendCommand("POST ", AUTH_HOST, "/token", body.c_str());
 
-    String res = readggClient(true);
+    String res;
+	readggClient(res, true);
     if (res.indexOf("Bearer") > -1){
         Serial.print("Token type ");
         Serial.println(res);

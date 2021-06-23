@@ -15,7 +15,8 @@ void GoogleGmailAPI::setMessageRead(const char* idEmail){
     snprintf_P(cmd, len, PSTR("/gmail/v1/users/me/messages/%s/modify"), idEmail);
 
     sendCommand("POST ", GMAIL_HOST, cmd, "{\"removeLabelIds\": [\"UNREAD\"]}", true);
-    readClient( __func__ , idEmail);
+	String res;
+    readClient( res, __func__ , idEmail);
 }
 
 
@@ -96,7 +97,7 @@ String GoogleGmailAPI::parseLine(String &line,  const char* _funcName, const cha
     return "";
 }
 
-String GoogleGmailAPI::readClient(const char* _funcName, const char* _key)
+void GoogleGmailAPI::readClient(String &payload, const char* _funcName, const char* _key)
 {
     functionLog() ;
 
@@ -111,22 +112,19 @@ String GoogleGmailAPI::readClient(const char* _funcName, const char* _key)
     }
 
     while (m_ggclient->available()) {
-        String line = m_ggclient->readStringUntil('\n');
-        String res = parseLine( line, _funcName, _key);
+        String line = m_ggclient->readStringUntil('\n');        
+        payload = parseLine( line, _funcName, _key);
         serialLogln(line);
         // value found in json response (skip all the remaining)
-        if(res.length() > 0){
+        if(payload.length() > 0){
             while (m_ggclient->available()) {
                 m_ggclient->read();
                 yield();
-            }
-            m_ggclient->stop();
-            return res;
+            }         
         }
     }
     if(m_ggclient->connected())
-        m_ggclient->stop();
-    return "";
+        m_ggclient->stop();    
 }
 
 
@@ -138,7 +136,8 @@ void GoogleGmailAPI::getMailData(const char* idEmail){
     cmd += idEmail;
 
     sendCommand("GET ", GMAIL_HOST, cmd.c_str(), "", true);
-    readClient( "getMailData" , idEmail);
+	String res;
+    readClient(res, "getMailData" , idEmail);
 }
 
 void GoogleGmailAPI::getMailList(const char* from, bool unread, uint32_t maxResults){
@@ -163,7 +162,8 @@ void GoogleGmailAPI::getMailList(const char* from, bool unread, uint32_t maxResu
     }
 
     sendCommand("GET ", GMAIL_HOST, uri.c_str(), "", true);
-    readClient( "getMailList" , "");
+	String res;
+    readClient(res, "getMailList" , "");
 }
 
 
@@ -189,12 +189,15 @@ const char* GoogleGmailAPI::sendEmail(const char* to, const char* subject, const
     tempsStr += F("\"}");
 
     sendCommand("POST ", GMAIL_HOST, "/gmail/v1/users/me/messages/send", tempsStr.c_str(), true);
-    return readClient( "sendEmail" , "").c_str();
+	String res;
+    readClient( res, "sendEmail" , "");
+	return res.c_str();
 }
 
 
-const char* GoogleGmailAPI::readSnippet(const char* idEmail){
-    return readMail(idEmail, true);
+const char* GoogleGmailAPI::readSnippet(const char* idEmail){	
+    const char* res = readMail( idEmail, true);
+	return res;
 }
 
 
@@ -205,13 +208,13 @@ const char* GoogleGmailAPI::readMail(const char* idEmail, bool snippet){
     cmd += idEmail;
 
     sendCommand("GET ", GMAIL_HOST, cmd.c_str(), "", true);
-    const char * mail;
+    String mail;
     if(snippet){
-        mail = readClient( "mail_snippet" , idEmail).c_str();
+        readClient(mail,  "mail_snippet" , idEmail);
     }
     else{
-        mail = readClient( "mail_body" , idEmail).c_str();
+        readClient(mail,  "mail_body" , idEmail);
     }
-    return mail;
+    return mail.c_str();
 }
 

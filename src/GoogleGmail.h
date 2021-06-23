@@ -26,7 +26,7 @@ public:
     void getMailData(const char* idEmail);
     void setMessageRead(const char* idEmail);
 protected:
-    String readClient(const char* _funcName, const char* _key);
+    void readClient(String &payload, const char* _funcName, const char* _key);
     String parseLine(String& line,  const char* _funcName, const char* _keyword);
 
     GmailList  *_mailList;

@@ -56,7 +56,7 @@ TBj0/VLZjmmx6BEP3ojY+x1J96relc8geMJgEtslQIxq/H5COEBkEveegeGTLg==
 
 
 #include <FS.h>
-#include "GapiServer.h"
+#include "esp-fs-webserver.h"
 
 #define AUTH_HOST "oauth2.googleapis.com"
 #define PORT 443
@@ -82,7 +82,7 @@ protected:
     bool doConnection( const char *host);
     void sendCommand(const char *const &rest, const char *const &host,
                         const char *const &command, const char *const &body, bool bearer );
-    const char* readggClient(bool keep_connection = false);
+    void readggClient(String &payload, bool keep_connection = false);
 
     bool isAccessTokenValid();
     bool refreshToken( bool stopClient = false);         // return true on access token valid
@@ -94,7 +94,7 @@ protected:
     bool writeParam(const char* keyword, const char* value );
     const String readParam(const char* keyword) const;
 
-    String parseLine(String &line, const char *filter) ;
+    String parseLine(String &line) ;
     const String getValue(String &line, const char* param) const;
     Client *m_ggclient;
 

@@ -256,7 +256,7 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
     #define BOUND_STR          "WebKitFormBoundary7MA4YWxkTrZu0gW"
     #define _BOUNDARY           "--" BOUND_STR
     #define END_BOUNDARY        "\r\n--" BOUND_STR "--\r\n"
-    #define BLOCK_SIZE          2048
+	#define BLOCK_SIZE          1460
 
     if (!m_ggclient->connected())
         doConnection(API_HOST);
@@ -315,36 +315,20 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
 
     serialLog(tmpStr);
     m_ggclient->print(tmpStr);
-
+	
     uint8_t buff[BLOCK_SIZE];
-
+	uint16_t count = 0;
     while (myFile.available()) {
-        yield();
-        if(myFile.available() > BLOCK_SIZE ){
-            myFile.read(buff, BLOCK_SIZE );
-            serialLogln("Sending block data buffer");
+		yield();
+		buff[count++] = (uint8_t)myFile.read();        
+        if (count == BLOCK_SIZE ) {            
+			count = 0;
             m_ggclient->write(buff, BLOCK_SIZE);
         }
-        else {
-            serialLogln("Last data block ");
-            int b_size = myFile.available() ;
-            myFile.read(buff, b_size);
-            m_ggclient->write(buff, b_size);
-        }
-    }
-
-    // uint16_t count = 0;
-    // while (myFile.available()) {
-    //     yield();
-    //     buff[count++] = (uint8_t)myFile.read();
-    //     if (count == BLOCK_SIZE ) {
-    //         m_ggclient->write((const uint8_t *)buff, BLOCK_SIZE);
-    //         count = 0;
-    //     }
-    // }
-    // if (count > 0) {
-    //     m_ggclient->write((const uint8_t *)buff, count);
-    // }
+	}
+    if (count > 0) {
+		m_ggclient->write(buff, count);
+	}
 
     m_ggclient->print(END_BOUNDARY);
     myFile.close();
