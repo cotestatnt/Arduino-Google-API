@@ -66,6 +66,7 @@ GoogleGmailAPI Class
 ### Supported boards
 The library works with the ESP8266 and ESP32 chipset.
 
++ 1.0.5   Web server handled by https://github.com/cotestatnt/esp-fs-webserver library. Redesign of configuration page
 + 1.0.4   Webserver included in source (no need to load Data folder in filesystem).
 + 1.0.3   Added support for Google Mail API
 + 1.0.2   Added support for Google Sheet API
