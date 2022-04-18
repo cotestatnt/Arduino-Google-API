@@ -5,13 +5,12 @@
 @import "node_modules/bootstrap/scss/_mixins";
 @import "node_modules/bootstrap/scss/_utilities";
 
-
-
 // Layout & components
 @import "node_modules/bootstrap/scss/_root";
-@import "node_modules/bootstrap/scss/_reboot";
-@import "node_modules/bootstrap/scss/_type";
+// @import "node_modules/bootstrap/scss/_reboot";
+// @import "node_modules/bootstrap/scss/_type";
 // @import "node_modules/bootstrap/scss/_images";
+
 @import "node_modules/bootstrap/scss/_containers";
 // @import "node_modules/bootstrap/scss/_grid";
 @import "node_modules/bootstrap/scss/_tables";
@@ -44,6 +43,3 @@
 // // Utilities
 @import "node_modules/bootstrap/scss/utilities/_api";
 // scss-docs-end import-stack
-
-
-

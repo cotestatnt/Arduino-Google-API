@@ -1,29 +1,24 @@
 <template>
   <div id="app">
     <div class="container" style="max-width: 800px;">
-      <div class="alert alert-warning alert-dismissible fade show" role="alert" v-if="chrome">
+      <!-- <div class="alert alert-warning alert-dismissible fade show" role="alert" v-if="chrome">
         Due to a bug with ESP32@Chrome, this webpage could not be loaded properly.<br>
         If you encounter problems, try a different browser (for example Firefox)
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" @click="dismiss"></button>
-      </div>
-      <AppLogo class="app-logo" />
-      <WifiScan />
+      </div> -->
       <GetToken />
      </div>
   </div>
 </template>
 
 <script>
-import WifiScan from './components/Wifi.vue'
 import GetToken from './components/Token.vue'
-import AppLogo  from './assets/arduino-google-api.vue'
 
 export default {
   name: 'App',
   components: {
-    WifiScan,
+    // WifiScan,
     GetToken,
-    AppLogo,
   },
   data() {
     return {

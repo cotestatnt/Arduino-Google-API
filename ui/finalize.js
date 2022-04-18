@@ -53,11 +53,11 @@ gzip(input, {numiterations: 15}, (err, output) => {
     indexHTML = output;
     let source =
 `
-const uint32_t WEBPAGE_HTML_SIZE = ${indexHTML.length};
-const char WEBPAGE_HTML[] PROGMEM = { ${indexHTML} };
+const uint32_t AUTHPAGE_HTML_SIZE = ${indexHTML.length};
+const char AUTHPAGE_HTML[] PROGMEM = { ${indexHTML} };
 `;
 
-fs.writeFileSync(__dirname + '/dist/webpage.h', source, 'utf8');
+fs.writeFileSync(__dirname + '/dist/ga_config.h', source, 'utf8');
 //  fs.writeFileSync('../Arduino-Google-API/src/WebServer/setup_htm.h', source, 'utf8');
 
 });

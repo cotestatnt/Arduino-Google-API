@@ -2,15 +2,15 @@
   <div>
     <BModal ref="BModal" :message="modalMessage" :title="modalTitle" :buttonType="modalButton" @Restart="doRestart" />
     <br><br>
-    <div class="form-check" style="text-align: left; font-size: 0.75rem;">
+    <div class="form-check" style="text-align: left; font-size: 0.85rem;">
       <input type="checkbox" class="form-check-input" v-model=verbose @click="toggleVerbose" />
       Show / Edit Google API OAuth2.0 credentials for this application
     </div>
 
     <div class="alert alert-primary" role="alert">
-      Google APIs use the OAuth 2.0 protocol for authentication and authorization.<br>
+      <h4>Google APIs use the OAuth 2.0 protocol for authentication and authorization.</h4>
       Click to button below to start Google authorization flow.<br>
-      Credentials data was loaded from ESP memory, but you can changhe here if needed.<br>
+      Credentials data was loaded from default device, but you can change here if needed.<br>
     </div>
 
     <div v-if=verbose>
@@ -38,17 +38,18 @@
         <br><div class="input-group-append"> <span class="input-group-text">Redirect uri</span> </div>
         <input type="text" class="form-control" v-model="redirect_uri">
       </div>
+      <br><br>
     </div>
 
     <div v-if="this.gotCode != true" style="margin: auto auto; margin-bottom: 40px;">
-      <button type="button" class="btn btn-primary sm" @click="openPopup" >Authorize application to access Google APIs</button>
+      <button type="button" class="btn btn-primary" @click="openPopup">Authorize the application for using Google APIs</button>
       <br>
     </div>
 
     <div v-if="this.gotCode != false && this.gotTokens != true" id="scroll-me">
       <div class="alert alert-primary" role="alert">
         Click button "Exchange authorization code for tokens" for ending authorization flow.
-        <br>You will get yours access token and refresh token. <br><br>
+        <br>You will get back your own access token and refresh token for this application.<br><br>
         <button type="button" class="btn btn-primary" @click="getAuthCode">Exchange authorization code for tokens</button>
         <span class="blink" v-if="waitTokens">  ...loading</span>
       </div>
@@ -59,25 +60,19 @@
         <br><div class="input-group-append"> <span class="input-group-text">Authorization Code</span> </div>
         <input type="text" class="form-control" placeholder="Authorization code..." v-model="authorization_code" readonly>
       </div>
-
-      <form>
-        <div class="form-group">
-          <textarea class="form-control" rows="10" v-model="jsonToSave" readonly></textarea>
-        </div>
-      </form>
+      <pre><p><span v-html="jsonToSave"></span></p></pre>
 
       <div></div><br>
       <div class="input-group mb-3">
         <br><div class="input-group-append"> <span class="input-group-text">json Filename</span> </div>
         <input type="text" ref="json_filename" class="form-control" value="/gapi_config.json" readonly>
-        <button class="btn btn-primary" type="button" @click="saveJSON">Send configuration file to ESP!</button>
+        <button class="btn btn-primary" type="button" @click="saveJSON">Save configuration file in flash memory!</button>
       </div><br>
     </div>
   </div>
 </template>
 
 <script>
-import axios from 'axios';
 import BModal from "../components/BModal";
 
 export default {
@@ -129,7 +124,7 @@ components: {
     openPopup() {
       var _MsgWindowOpenError = 'Please allow pop-up windows to authorize application.';
       if (window.name != "new") {
-        var options = "fullscreen=no,height=700,width=500";
+        var options = "fullscreen=no,height=800,width=600";
         var newWin = window.open(this.authorization_uri, "Authorize Smart App", options);
 
         if (newWin == null) {
@@ -148,11 +143,9 @@ components: {
     },
 
     doRestart() {
-      axios
-        .get('/restart')
-        .then((r) => {
-            console.log('Restart ESP command');
-        });
+      fetch('/restart')
+        .then(response => console.log(response.text()))
+        .catch(error => console.log('error', error));
       this.toggleModal();
       let url = 'http://' + location.host + '/setup';
       location.assign(url);
@@ -160,64 +153,58 @@ components: {
 
     getAuthCode(){
       this.waitTokens = true;
-      axios
-        .get(this.redirect_uri, {
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Content-Type': 'text/html; charset=UTF-8'
-          }
-        })
-        .then(response => {
-          this.authorization_code = response.data.trim();
+      fetch(this.redirect_uri, { mode: 'cors'})
+        .then(blob => blob.json())
+        .then(data => {
+          console.table(data);
+          this.authorization_code = data['code'];
           this.getTokens = true;
           this.getGoogleTokens();
-        });
+        })
+        .catch(error => console.log('error', error));
     },
 
-    getGoogleTokens() {
-      let payload = {
-        'client_id': this.client_id,
-        'client_secret': this.client_secret,
-        'grant_type': 'authorization_code',
-        'redirect_uri': this.redirect_uri,
-        'code': this.authorization_code
-      };
+     getGoogleTokens() {
+      var myHeaders = new Headers();
+      myHeaders.append("Content-Type", "application/json");
 
-      const headers = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Max-Age': '600',
-        'Access-Control-Allow-Methods': 'PUT,POST,GET,OPTIONS',
-        'Access-Control-Allow-Headers': '*'
-      };
-
-      const proxyurl = "https://cors.bridged.cc/";
-      axios
-      .post(proxyurl + 'https://oauth2.googleapis.com/token', payload, { headers } )
-      .then(response => {
-
-        let json = {
-          'redirect_uri': this.redirect_uri,
-          'scope': this.scope,
-          'api_key': this.api_key,
-          'client_id': this.client_id,
-          'client_secret': this.client_secret,
-          'refresh_token': response.data.refresh_token,
-          'access_token': response.data.access_token,
-        };
-        let obj = JSON.stringify(json, null, 2).replace(/\n/g, '   \n');
-        this.jsonToSave = obj;
-        this.gotTokens = true;
-        this.waitTokens = false;
+      var payload = JSON.stringify({
+        "client_id": this.client_id,
+        "client_secret": this.client_secret,
+        "grant_type": "authorization_code",
+        "redirect_uri":  this.redirect_uri,
+        "code": this.authorization_code
       });
 
+      var requestOptions = {
+        method: 'POST',
+        headers: myHeaders,
+        body: payload,
+        redirect: 'follow'
+      };
+
+      fetch("https://oauth2.googleapis.com/token", requestOptions)
+        .then(response => response.json())
+        .then(obj => {
+          // console.log(result)
+          // let obj = JSON.parse(result);
+
+          obj["client_id"] = this.client_id;
+          obj["client_secret"] = this.client_secret;
+          obj["api_key"] = this.api_key;
+          obj["scope"] = this.scope;
+          obj["redirect_uri"] = this.redirect_uri;
+
+          this.jsonToSave = JSON.stringify(obj, null, 2);
+          this.gotTokens = true;
+        })
+        .catch(error => console.log('error', error));
     },
 
     async loadJson() {
-      axios
-        .get(`/gapi_config.json`)
-        .then(response => {
-          const obj = response.data;
-
+      fetch('/gapi_config.json')
+        .then(response => response.json())
+        .then(obj => {
           this.client_id = obj.client_id;
           this.client_secret = obj.client_secret;
           this.api_key = obj.api_key;
@@ -225,7 +212,8 @@ components: {
           this.redirect_uri = obj.redirect_uri;
           this.authorization_uri =
           `https://accounts.google.com/o/oauth2/v2/auth?client_id=${this.client_id}&redirect_uri=${this.redirect_uri}&response_type=code&scope=${this.scope}&access_type=offline&prompt=consent`;
-        });
+        })
+        .catch(error => console.log('error', error));
     },
 
     saveJSON() {
@@ -246,16 +234,22 @@ components: {
         'Access-Control-Allow-Headers': '*'
       };
 
-      axios
-      .post('/edit', formData, { headers })
-      .then(response => {
-        this.modalTitle = 'Google API credentials'
-        this.modalMessage = 'File <b>gapi_config.json</b> saved successfully!'
-        this.modalButton =  'Restart';
-        this.$refs.BModal.toggleModal();
-        console.log(response);
-      });
+      var requestOptions = {
+        method: 'POST',
+        headers: headers,
+        body: formData
+      };
 
+       fetch('/edit', requestOptions)
+        .then(response => response.text())
+        .then((result) => {
+          this.modalTitle = 'Google API credentials'
+          this.modalMessage = 'File <b>gapi_config.json</b> saved successfully!'
+          this.modalButton =  'Restart';
+          this.$refs.BModal.toggleModal();
+          console.log(result);
+        })
+        .catch(error => console.log('error', error));
     },
   },
 }
