@@ -52,7 +52,7 @@ const char* dataFolderName = "/data";        // Local folder for store data file
 
 GoogleFilelist driveList;
 GoogleDriveAPI myDrive(FILESYSTEM, client, &driveList );
-FSWebServer myWebServer(FILESYSTEM, server);
+GA_FSWebServer myWebServer(FILESYSTEM, server);
 bool apMode = true;
 bool runWebServer = false;
 
