@@ -7,9 +7,9 @@
 #define S_FILENAME   "myTestData"
 
 // Google API OAuth2.0 client setup default values (you can change later with setup webpage)
-const char* client_id     =  "408231038603-f9g6btf4ip5ge3guv944q01qvoa2srhf.apps.googleusercontent.com";
-const char* client_secret =  "jb7XS8CMqgSsMUuldZm3LfJG";
-const char* api_key       =  "AIzaSyB-kUJQOcFya2Ls7qMlofObXhsECs2e3i0";
+const char* client_id     =  "xxxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com";
+const char* client_secret =  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+const char* api_key       =  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
 const char* scopes        =  "https://www.googleapis.com/auth/drive.file "
                              "https://www.googleapis.com/auth/spreadsheets ";
 
