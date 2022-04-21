@@ -1,74 +1,78 @@
-#include <FS.h>
 #include <time.h>
-#include <sys/time.h>
-#include <GoogleDrive.h>
-#include <ArduinoJson.h>
-#include <DNSServer.h>
-DNSServer dnsServer;
-
-#ifndef LED_BUILTIN
-#define LED_BUILTIN 2
-#endif
+#include <GoogleSheet.h>
+#include <esp-fs-webserver.h>   // https://github.com/cotestatnt/esp-fs-webserver
 
 // Timezone definition to get properly time from NTP server
 #define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
 struct tm Time;
 
+#include <FS.h>
+#include <LittleFS.h>
+#define FILESYSTEM LittleFS
+
 #ifdef ESP8266
-  #include <LittleFS.h>  
-  #include <ESP8266WiFi.h>
-  #include <WiFiClient.h>
-  #include <ESP8266WebServer.h>
-  ESP8266WebServer server(80);
-  BearSSL::WiFiClientSecure client;
-  BearSSL::Session   session;
-  BearSSL::X509List  certificate(google_cert);
-  #define FILESYSTEM LittleFS
+ESP8266WebServer server(80);
+BearSSL::WiFiClientSecure client;
+BearSSL::Session   session;
+BearSSL::X509List  certificate(google_cert);
 #elif defined(ESP32)
-  // Sse FFat or SPIFFS with ESP32
-  #include <FFat.h>
-  #include <WiFiClientSecure.h>
-  #include <WebServer.h>    
-  #define FILESYSTEM FFat
-  WiFiClientSecure client;
-  WebServer server;
+WiFiClientSecure client;
+WebServer server;
 #endif
 
+#include "config.h"
 
 // WiFi setup
-const char* ssid = "PuccosNET";         // SSID WiFi network
-const char* password = "Tole76tnt";     // Password  WiFi network
-const char* hostname = "gapi_esp";      // http://gapi_esp.local/
-
-// Google API OAuth2.0 client setup default values (you can change later with setup webpage)
-const char* client_id     =  "408231038603-f9g6btf4ip5ge3guv944q01qvoa2srhf.apps.googleusercontent.com";
-const char* client_secret =  "jb7XS8CMqgSsMUuldZm3LfJG";
-const char* api_key       =  "AIzaSyB-kUJQOcFya2Ls7qMlofObXhsECs2e3i0";
-const char* scopes        =  "https://www.googleapis.com/auth/drive.file";
-const char* redirect_uri  =  "https://enyi3pe1qtnnvz9.m.pipedream.net";
-
-const char* APP_FOLDERNAME = "DataFolder";   // Google Drive online folder name
-const char* dataFolderName = "/data";        // Local folder for store data files
+String hostname = HOSTNAME;
+// Remote
+String appFolderName = FOLDER_NAME;     // Google Drive online folder name
+String dataFileName = S_FILENAME;       // Google Drive filename
+// Local (data filename will be date-related once for day  ex. "20201025.txt")
+#define MAX_NAME_LEN 16
+String dataFolderName = FOLDER_NAME;    // Local folder for store data files
+char dataFilePath[strlen(FOLDER_NAME) + MAX_NAME_LEN +1];
 
 GoogleFilelist driveList;
 GoogleDriveAPI myDrive(FILESYSTEM, client, &driveList );
-GapiServer myWebServer(FILESYSTEM, server);
-bool apMode = true;
-bool runWebServer = false;
+FSWebServer myWebServer(FILESYSTEM, server);
+bool runWebServer = true;
+bool authorized = false;
 
-#define MAX_NAME_LEN 16
-char dataFileName[MAX_NAME_LEN];          // ex. "20201025.txt"
+// This is the webpage used for authorize the application (OAuth2.0)
+#include "gaconfig_htm.h"
+void handleConfigPage() {
+  WebServerClass* webRequest = myWebServer.getRequest();
+  webRequest->sendHeader(PSTR("Content-Encoding"), "gzip");
+  webRequest->send_P(200, "text/html", AUTHPAGE_HTML, AUTHPAGE_HTML_SIZE);
+}
 
-
+////////////////////////////////  Application setup  /////////////////////////////////////////
+void loadApplicationConfig() {
+  StaticJsonDocument<2048> doc;
+  File file = FILESYSTEM.open("/config.json", FILE_READ);
+  if (file) {
+    DeserializationError error = deserializeJson(doc, file);
+    file.close();
+    if (error) {
+      Serial.println(F("Failed to deserialize file, may be corrupted"));
+      Serial.println(error.c_str());
+    }
+    else {
+      serializeJsonPretty(doc, Serial);
+      appFolderName = doc["Google Drive Folder Name"].as<String>();
+      dataFolderName = doc["Local Folder Name"].as<String>();
+    }
+  }
+}
 
 ////////////////////////////////  NTP Time  /////////////////////////////////////////
 void getUpdatedtime(const uint32_t timeout) {
-    uint32_t start = millis();
-    do {
-        time_t now = time(nullptr);
-        Time = *localtime(&now);
-        delay(1);
-    } while(millis() - start < timeout  && Time.tm_year <= (1970 - 1900));
+  uint32_t start = millis();
+  do {
+    time_t now = time(nullptr);
+    Time = *localtime(&now);
+    delay(1);
+  } while (millis() - start < timeout  && Time.tm_year <= (1970 - 1900));
 }
 
 ////////////////////////////////  Heap memory info  /////////////////////////////////
@@ -79,272 +83,254 @@ void printHeapStats() {
     time_t now = time(nullptr);
     Time = *localtime(&now);
 #ifdef ESP32
-    Serial.printf("%02d:%02d:%02d - Total free: %6d - Max block: %6d\n",
-      Time.tm_hour, Time.tm_min, Time.tm_sec, heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0) );
+    Serial.printf("%02d:%02d:%02d - Total free: %6d - Max block: %6d\n", Time.tm_hour, Time.tm_min, Time.tm_sec, heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0) );
 #elif defined(ESP8266)
     uint32_t free;
     uint16_t max;
     ESP.getHeapStats(&free, &max, nullptr);
-    Serial.printf("%02d:%02d:%02d - Total free: %5d - Max block: %5d\n",
-      Time.tm_hour, Time.tm_min, Time.tm_sec, free, max);
+    Serial.printf("%02d:%02d:%02d - Total free: %5d - Max block: %5d\n", Time.tm_hour, Time.tm_min, Time.tm_sec, free, max);
 #endif
   }
 }
 
-// Create new local data file on day change
-void createDayFile(){
-    // Create a file for each different day
-    char path[10 + MAX_NAME_LEN];
-    snprintf(path, 30, "%s/%s%c", dataFolderName, dataFileName, '\0' );
-    
-    if( !FILESYSTEM.exists(dataFolderName)){
-        FILESYSTEM.mkdir(dataFolderName);   
+////////////////////////////////  Create new local data file on day change  /////////////////////////////////////////
+void createDayFile(const char * filePath) {
+  if (!FILESYSTEM.exists(filePath)) {
+    if (strchr(filePath, '/')) {
+      Serial.printf("Create missing folders of: %s\r\n", filePath);
+      char *pathStr = strdup(filePath);
+      if (pathStr) {
+        char *ptr = strchr(pathStr, '/');
+        while (ptr) {
+          *ptr = 0;
+          FILESYSTEM.mkdir(pathStr);
+          *ptr = '/';
+          ptr = strchr(ptr + 1, '/');
+        }
+      }
+      free(pathStr);
     }
-    // Storage of a complete day data need at least 32Kb  (one measure once a minute)    
-    File dataFile =  FILESYSTEM.open(path, "w");
-    if (!dataFile) {
-        Serial.print(F("There was an error opening the file for writing - "));
-        Serial.println(path);
-    }
-    dataFile.close();
+  }
+  // Storage of a complete day data need at least 32Kb  (one measure once a minute)
+  File file =  FILESYSTEM.open(filePath, FILE_WRITE);
+  if (!file) {
+    Serial.print(F("There was an error opening the file for writing - "));
+    Serial.println(filePath);
+  }
+  file.close();
 }
 
-// Append new row to local data file
-void appendMeasurement(){
-    getUpdatedtime(0);    
-    uint32_t free;
-    uint16_t max;
- #ifdef ESP32
-    free = heap_caps_get_free_size(0);
-    max = heap_caps_get_largest_free_block(0);
+
+////////////////////////////////   Append new row to local data file /////////////////////////////////////////
+void appendMeasurement() {
+  // Create name of the data file (if it's a new day, will be created a new data file)
+  char dataFileName[MAX_NAME_LEN + 1];          // ex. "20201025.txt"  
+  snprintf(dataFileName, MAX_NAME_LEN, "%04d%02d%02d.txt", Time.tm_year + 1900, Time.tm_mon + 1, Time.tm_mday );
+  snprintf(dataFilePath, 30, "/%s/%s", dataFolderName, dataFileName);
+  
+  getUpdatedtime(100);
+  uint32_t free; uint16_t max;
+#ifdef ESP32
+  free = heap_caps_get_free_size(0);
+  max = heap_caps_get_largest_free_block(0);
 #elif defined(ESP8266)
-    ESP.getHeapStats(&free, &max, nullptr);
+  ESP.getHeapStats(&free, &max, nullptr);
 #endif
-   
-    // Update name of the data file if necessary
-    snprintf(dataFileName, MAX_NAME_LEN, "%04d%02d%02d.txt", Time.tm_year+1900, Time.tm_mon+1, Time.tm_mday );
-    char path[10 + MAX_NAME_LEN];
-    snprintf(path, 30, "%s/%s", dataFolderName, dataFileName );
-    if(FILESYSTEM.exists(path)){
-        char dataBuf[30];
-        snprintf(dataBuf, sizeof(dataBuf), "%02d:%02d:%02d; %5d; %5d",
-            Time.tm_hour, Time.tm_min, Time.tm_sec, free, max);
-    
-        File file = FILESYSTEM.open(path, "a");
-        file.println(dataBuf);
-        file.close();
-        Serial.print(F("Append new data to file: "));
-        Serial.println(dataBuf);
-    }
-    else
-        createDayFile();    
+  
+  if (FILESYSTEM.exists(dataFilePath)) {
+    // Add updated data to file
+    char dataBuf[30];
+    snprintf(dataBuf, sizeof(dataBuf), "%02d:%02d:%02d; %5d; %5d", Time.tm_hour, Time.tm_min, Time.tm_sec, free, max);
+    File file = FILESYSTEM.open(dataFilePath, FILE_APPEND);
+    file.println(dataBuf);
+    file.close();
+    Serial.print(F("Append new data to file: "));
+    Serial.println(dataBuf);
+  }
+  else {
+    Serial.print(F("Create new file "));
+    Serial.println(dataFilePath);
+    createDayFile(dataFilePath);
+  }
 }
 
-// Upload local data file to Google Drive.
-void uploadToDrive(){
-    // Check if file is already in file list (local)
-    String fileid = myDrive.getFileId(dataFileName);
-
-    // Check if a file with same name is already present online and return id
-    // (Google assume that file is different also if name is equal)
-    if(fileid.length() < 30) 
-        fileid = myDrive.searchFile(dataFileName);
-
-    String localPath = dataFolderName;
-    localPath += "/";
-    localPath += String(dataFileName);
-
-    String uploadedId;
-    if(fileid.length() > 30) {
-        Serial.print("\n\nFile present in app folder. \nCall update method for ");
-        Serial.println(localPath);
-        uploadedId = myDrive.uploadFile(localPath, fileid, true);
+////////////////////////////////  Start Filesystem  /////////////////////////////////////////
+void startFilesystem() {
+  if (!LittleFS.begin(true)) {
+    Serial.println("LittleFS Mount Failed");
+    return;
+  }
+  else {
+    File root = FILESYSTEM.open("/", "r");
+    File file = root.openNextFile();
+    while (file) {
+      const char* fileName = file.name();
+      size_t fileSize = file.size();
+      Serial.printf("FS File: %s, size: %lu\n", fileName, (long unsigned)fileSize);
+      file = root.openNextFile();
     }
-    else {        
-        Serial.print("\n\nFile not present in app folder. Call upload method for");
-        Serial.println(localPath);
-        String appFolderId = myDrive.getAppFolderId();
-        uploadedId = myDrive.uploadFile(localPath, appFolderId, false);
-    }
-
-    if(uploadedId.length()){  
-        String text =  F("File uploaded to Drive with id "); 
-        text += uploadedId;
-        server.send(200, "text/plain", text);
-        Serial.println(text);
-    }
-    else{
-        server.send(200, "text/plain", "Error");  
-        Serial.print("\nError. File not uploaded correctly.");
-    }
-    Serial.println("\n\nApp folder content:");
-    myDrive.printFileList();
+    Serial.println();
+  }
 }
 
+////////////////////////////////  Create Google Drive folder  /////////////////////////////////////////
+bool createDriveFolder() {
+  if (WiFi.isConnected()) {
+    // Begin Google API handling (to store tokens and configuration, filesystem must be mounted before)
+    if (myDrive.begin(client_id, client_secret, scopes, api_key, redirect_uri)) {
+      // Authorization OK when we have a valid token
+      if (myDrive.getState() == GoogleOAuth2::GOT_TOKEN) {
+        Serial.print(F("\n\n-------------------------------------------------------------------------------"));
+        Serial.print(F("\nYour application has the credentials to use the google API in the selected scope\n"));
+        Serial.print(F("\n---------------------------------------------------------------------------------\n\n"));
+        String appFolderId =  myDrive.searchFile(appFolderName);
+        // Save the folder id for easy retrieve when needed
+        myDrive.setAppFolderId(appFolderId);
 
-////////////////////////////////  Filesystem  /////////////////////////////////////////
-void startFilesystem(){
-  // FILESYSTEM INIT
-    if ( FILESYSTEM.begin()){
-        File root = FILESYSTEM.open("/", "r");
-        File file = root.openNextFile();
-        while (file){
-            const char* fileName = file.name();
-            size_t fileSize = file.size();
-            Serial.printf("FS File: %s, size: %lu\n", fileName, (long unsigned)fileSize);
-            file = root.openNextFile();
+        Serial.print("App folder id: ");
+        Serial.println(appFolderId);
+        if (appFolderId.length() >= 30 ) {
+          // A valid Google id founded
+          Serial.println("\n\nFile created with this app:");
+          myDrive.updateFileList();
+          myDrive.printFileList();
         }
-        Serial.println();
+        else {
+          Serial.println("Folder APP not present. Now it will be created.");
+          myDrive.createFolder(appFolderName.c_str(), "root");
+        }
+        return true;
+      }
     }
+    if (myDrive.getState() == GoogleOAuth2::INVALID) {
+      Serial.print(warning_message);
+      runWebServer = true;
+      return false;
+    }
+  }
+  return false;
+}
+
+////////////////////////////////  Upload local data file to Google Drive  /////////////////////////////////////////
+void uploadToDrive() {
+  // Check if file is already in file list (local)
+  String fileid = myDrive.getFileId(dataFileName.c_str());
+
+  // Check if a file with same name is already present online and return id
+  // (Google assume that file is different also if name is equal)
+  if (fileid.length() < 30)
+    fileid = myDrive.searchFile(dataFileName);
+
+  if (fileid.length() > 30) {
+    Serial.print(fileid);
+    Serial.print(" - file present in app folder. \nCall update method for ");
+    Serial.println(dataFilePath);
+    fileid = myDrive.uploadFile(dataFilePath, fileid.c_str(), true);
+  }
+  else {
+    Serial.print("\n\nFile not present in app folder. Call upload method for");
+    Serial.println(dataFilePath);
+    String appFolderId = myDrive.getAppFolderId();
+    fileid = myDrive.uploadFile(dataFilePath, appFolderId.c_str(), false);
+  }
+
+  if (fileid.length()) {
+    String text =  F("File uploaded to Drive with id ");
+    text += fileid;
+    server.send(200, "text/plain", text);
+    Serial.println(text);
+  }
+  else {
+    server.send(200, "text/plain", "Error");
+    Serial.print("\nError. File not uploaded correctly.");
+  }
+  Serial.println("\n\nApp folder content:");
+  myDrive.printFileList();
+}
+
+////////////////////////////////  Configure and start local webserver  /////////////////////////////////////////
+void configureWebServer() {
+  // Try to connect to flash stored SSID, start AP if fails after timeout
+  IPAddress myIP = myWebServer.startWiFi(10000, "ESP_AP", "123456789" );
+
+  // Configure /setup page and start Web Server
+  myWebServer.addOption(FILESYSTEM, "Google Drive Folder Name", appFolderName);
+  myWebServer.addOption(FILESYSTEM, "Local Folder Name", dataFolderName);
+
+  // Add 2 buttons for ESP restart and ESP Google authorization page
+  myWebServer.addOption(FILESYSTEM, "raw-html-button", button_html);
+
+  String infoStr = String(info_html);
+  infoStr.replace("SETUP_PAGE__PLACEHOLDER", hostname);
+  myWebServer.addOption(FILESYSTEM, "raw-html-info", infoStr);
+  myWebServer.addHandler("/config", handleConfigPage);
+
+  // Start webserver
+  if (myWebServer.begin()) {
+    Serial.print(F("ESP Web Server started on IP Address: "));
+    Serial.println(myIP);
+    Serial.println(F("Open /setup page to configure optional parameters"));
+    Serial.println(F("Open /edit page to view and edit files"));
+    MDNS.begin(hostname.c_str());
+  }
 }
 
 
-////////////////////////////////  WiFi  /////////////////////////////////////////
-void startWiFi(){
-    if(ssid != nullptr && password != nullptr) {
-        Serial.printf("Connecting to %s\n", ssid);
-        WiFi.mode(WIFI_STA);
-        WiFi.begin(ssid, password);
-        // Try to connect to ssid, if it fail go back to AP_MODE
-        uint32_t startTime = millis();
-        while (WiFi.status() != WL_CONNECTED ){
-            delay(500);
-            Serial.print(".");
-            if( millis() - startTime > 20000 )
-                break;
-        }
-        if(WiFi.status() == WL_CONNECTED) {
-            apMode = false;
-            Serial.print("\nConnected! IP address: ");
-            Serial.println(WiFi.localIP());
-            // Set hostname, timezone and NTP servers
-        #ifdef ESP8266
-            WiFi.hostname(hostname);
-            configTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
-        #elif defined(ESP32)
-            WiFi.setHostname(hostname);
-            configTzTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
-        #endif
-            // Sync time with NTP. Blocking, but with timeout (0 == no timeout)
-            getUpdatedtime(10000);
-            char nowTime[30];
-            strftime (nowTime, 30, "%d/%m/%Y - %X", &Time);
-            Serial.printf("Synced time: %s\n", nowTime);
-        }
-    }
-}
+void setup() {
+  Serial.begin(115200);
 
-void setup(){
-    Serial.begin(115200);
-    Serial.setDebugOutput(true);
-    // FILESYSTEM init and load optins (ssid, password, etc etc)
-    startFilesystem();
-    // Set Google API certificate
+  // FILESYSTEM init and load optins (ssid, password, etc etc)
+  startFilesystem();
+  loadApplicationConfig();
+  Serial.println();
+
+  // Set Google API certificate
 #ifdef ESP8266
-    //client.setNoDelay(1);
-    client.setSession(&session);
-    client.setTrustAnchors(&certificate);
-    client.setBufferSizes(1024, 2048);
-    WiFi.hostname(hostname);
+  client.setSession(&session);
+  client.setTrustAnchors(&certificate);
+  client.setBufferSizes(1024, 1024);
+  WiFi.hostname(hostname.c_str());
+  configTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
 #elif defined(ESP32)
-    client.setCACert(google_cert);
-    WiFi.setHostname(hostname);
+  client.setCACert(google_cert);
+  WiFi.setHostname(hostname.c_str());
+  configTzTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
 #endif
-    // WiFi INIT
-    startWiFi();
+  configureWebServer();
+  getUpdatedtime(10000);
 
-    if (WiFi.isConnected()) {
-        // Begin Google API handling (to store tokens and configuration, filesystem must be mounted before)
-        if (myDrive.begin(client_id, client_secret, scopes, api_key, redirect_uri)){
-            // Authorization OK when we have a valid token
-            if (myDrive.getState() == GoogleOAuth2::GOT_TOKEN){
-                Serial.print(F("\n\n-------------------------------------------------------------------------------"));
-                Serial.print(F("\nYour application has the credentials to use the google API in the selected scope\n"));
-                Serial.print(F("\n---------------------------------------------------------------------------------\n\n"));
-                String appFolderId =  myDrive.searchFile(APP_FOLDERNAME);
-                // Save the folder id for easy retrieve when needed
-                myDrive.setAppFolderId(appFolderId);
-    
-                Serial.print("App folder id: ");
-                Serial.println(appFolderId);
-                if (appFolderId.length() >= 30 ) {  
-                    // A valid Google id founded 
-                    Serial.println("\n\nFile created with this app:");
-                    myDrive.updateFileList();
-                    myDrive.printFileList();
-                }
-                else {
-                    Serial.println("Folder APP not present. Now it will be created.");
-                    myDrive.createFolder(APP_FOLDERNAME, "root");
-                }
-            }
-        }
-        if(myDrive.getState() == GoogleOAuth2::INVALID){
-            Serial.print(F("\n\n-------------------------------------------------------------------------------"));
-            Serial.print(F("\nGoogle says that your client is NOT VALID! You have to authorize the application."));
-            Serial.print(F("\nFor instructions, check the page https://github.com/cotestatnt/Arduino-Google-API\n"));
-            Serial.print(F("\nOpen this link with your browser to authorize this appplication, then restart.\n\n"));
-            Serial.printf("\nhttp://%s.local/\n", hostname);
-            Serial.print(F("\n---------------------------------------------------------------------------------\n\n"));
-            runWebServer = true;
-        }
-    }
-    // Application must be authorized, start ESP in access point mode (captive mode) and run webserver
-    runWebServer = true;        // uncomment this to test webserver even when not necessary for authorization flow
-    if(apMode || runWebServer ) {
-        if(apMode) {
-            Serial.print("\nStart Access point mode");
-            WiFi.mode(WIFI_AP);
-            WiFi.softAP(hostname);
-            // if DNSServer is started with "*" for domain name, it will reply with provided IP to all DNS request
-            dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
-            Serial.printf("\ndns server started with ip: %s\n", WiFi.softAPIP().toString().c_str());
-            dnsServer.start(53, F("*"), WiFi.softAPIP());
-        }
-        if (MDNS.begin(hostname)) {
-            Serial.println("MDNS responder started.\nOn Window you need to install service like Bonjour");
-            Serial.printf("You should be able to connect with address\t http://%s.local/\n", hostname);
-        }
-        myWebServer.begin();
-        while(apMode) {
-            dnsServer.processNextRequest();
-            myWebServer.run();
-            #ifdef ESP8266
-            MDNS.update();
-            #endif
-            yield();
-            apMode = WiFi.status() != WL_CONNECTED;
-        }
-        dnsServer.stop();
-    }
+  // Create Google Drive folder
+  if (createDriveFolder()) {
+    Serial.println("Google Drive folder created succesfull");
+  }
 
-    // Update name of local data file 
-    snprintf(dataFileName, MAX_NAME_LEN, "%04d%02d%02d.txt", Time.tm_year+1900, Time.tm_mon+1, Time.tm_mday );
-    // Append to the file the first measure on reboot
-    appendMeasurement();
-
-    //uploadToDrive();
+  // Append to the file the first measure on reboot
+  appendMeasurement();
 }
 
-void loop(){
+void loop() {
 
-    // Run webserver (just for debug, not needed after first configuration)
-    if(runWebServer)
-        myWebServer.run();
+  // Run webserver (just for debug, not needed after first configuration)
+  if (runWebServer || WiFi.status() != WL_CONNECTED ) {
+    myWebServer.run();
+#ifdef ESP8266
+    MDNS.update();
+#endif
+  }
 
-    // Add new measure once 5 seconds
-    static uint32_t dataTime;
-    if(millis() - dataTime > 5000) {
-      dataTime = millis();
-      appendMeasurement();
-    }
+  // Add new measure once 5 seconds
+  static uint32_t dataTime;
+  if (millis() - dataTime > 5000) {
+    dataTime = millis();
+    appendMeasurement();
+  }
 
-    // Upload data file to Google Drive once a minute
-    static uint32_t uploadTime;
-    if(millis() - uploadTime > 60000) {
-      uploadTime = millis();
-      uploadToDrive();
-      Serial.print("Upload time: ");
-      Serial.println(millis() - uploadTime);
-    }
+  // Upload data file to Google Drive once a minute
+  static uint32_t uploadTime;
+  if (millis() - uploadTime > 60000) {
+    uploadTime = millis();
+    uploadToDrive();
+    Serial.print("Upload time: ");
+    Serial.println(millis() - uploadTime);
+  }
 }
