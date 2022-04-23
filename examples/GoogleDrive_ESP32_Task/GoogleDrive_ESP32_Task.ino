@@ -150,7 +150,7 @@ void appendMeasurement() {
     Serial.print(F("Appended new row to "));
     Serial.print(dataFilePath);
     Serial.print(F(": "));
-    Serial.print(dataBuf);
+    Serial.println(dataBuf);
   }
   else {
     Serial.print(F("Create new file "));
