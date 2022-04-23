@@ -126,6 +126,10 @@ void createDayFile(const char * filePath) {
 
 ////////////////////////////////   Append new row to local data file /////////////////////////////////////////
 void appendMeasurement() {
+  if (Time.tm_year <= (1970 - 1900)) {
+    Serial.println("NTP time is not synced");
+    return;
+  }
   // Create name of the data file (if it's a new day, will be created a new data file)
   char dataFileName[MAX_NAME_LEN + 1];          // ex. "20201025.txt"  
   snprintf(dataFileName, MAX_NAME_LEN, "%04d%02d%02d.txt", Time.tm_year + 1900, Time.tm_mon + 1, Time.tm_mday );
