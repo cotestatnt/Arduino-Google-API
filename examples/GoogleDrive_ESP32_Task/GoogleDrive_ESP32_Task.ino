@@ -147,8 +147,10 @@ void appendMeasurement() {
     File file = FILESYSTEM.open(dataFilePath, FILE_APPEND);
     file.println(dataBuf);
     file.close();
-    Serial.print(F("Append new data to file: "));
-    Serial.println(dataBuf);
+    Serial.print(F("Appended new row to "));
+    Serial.print(dataFilePath);
+    Serial.print(F(": "));
+    Serial.print(dataBuf);
   }
   else {
     Serial.print(F("Create new file "));
@@ -312,7 +314,9 @@ void setup() {
   configTzTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
 #endif
   configureWebServer();
-  getUpdatedtime(5000);
+  Serial.print(F("Waiting Network Time server sync... "));
+  getUpdatedtime(15000);
+  Serial.println(F("done."));
 
   // Create Google Drive folder
   if (createFolder()) {
@@ -357,8 +361,10 @@ void loop() {
 
   // Blink built-in led to show NON-blocking working mode
   static uint32_t ledTime = millis();
+  static bool doBlink = false;
   if (millis() - ledTime > 150) {
     ledTime = millis();
-    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+    doBlink = !doBlink;
+    digitalWrite(LED_BUILTIN, doBlink);
   }
 }
