@@ -46,7 +46,6 @@ bool GoogleOAuth2::begin(const char *id, const char *secret, const char *_scope,
             m_ggstate = GOT_TOKEN;
             return true;
 		}
-
 	}
     else
     {
@@ -475,17 +474,15 @@ bool GoogleOAuth2::writeParam(const char * keyword, const char * value){
     if (error) {
       Serial.print(F("Failed to deserialize file, may be corrupted: "));
       Serial.print(error.c_str());
-	  if(m_filesystem->remove(m_configFile))
-        Serial.println(". Config file deleted");
-      else 
-        Serial.println(". Delete config file failed");
+	  file.close();
+	  return false;
     }
     else {
       doc[keyword] = value;
 	  serializeJsonPretty(doc, file);
 	  file.close();
     }
-	
+	return true;
   }
 }
 
