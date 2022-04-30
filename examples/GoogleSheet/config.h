@@ -15,7 +15,8 @@ const char* api_key       =  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
 const char* scopes        =  "https://www.googleapis.com/auth/drive.file "
                              "https://www.googleapis.com/auth/spreadsheets ";
 							 
-/* 
+
+/*
 * You can use this redirect_uri if you don't have your own.
 * This is a node.js server side application running on Heroku platform
 * With Heroku CLI you can clone the repo https://git.heroku.com/arduino-google-api.git
@@ -23,9 +24,7 @@ const char* scopes        =  "https://www.googleapis.com/auth/drive.file "
 */
 const char* redirect_uri  =  "https://arduino-google-api.herokuapp.com";
 
-
-
-static const char warning_message[] PROGMEM = R"EOF(
+const char warning_message[] PROGMEM = R"EOF(
 ---------------------------------------------------------------------------------
 Google says that your client is NOT VALID! You have to authorize the application.
 For instructions, check the page https://github.com/cotestatnt/Arduino-Google-API
@@ -34,11 +33,11 @@ You need to authorize this appplication with configation webpage, then restart.
 )EOF";
 
 
-static const char button_html[] PROGMEM = R"EOF(
+const char button_html[] = R"EOF(
 <button class='button' onclick=window.open('/restart')>Restart ESP</button><button class='button' style= 'background-color: crimson;' onclick=window.open('/config')>Authorize ESP</button><hr>
 )EOF";
 
-static const char info_html[] PROGMEM = R"EOF(
+const char info_html[] = R"EOF(
 <div style='text-align:center'>Save options if needed, then insert WiFi credentials and connect to SSID.<br>
 Once connected to internet, your device need to be authorized from Google in order to write Sheets.<hr>
 If you are still connected to local ESP Access Point, disconnect and reload webpage <br><br> <a href='http://SETUP_PAGE__PLACEHOLDER.local'>http://SETUP_PAGE__PLACEHOLDER.local</a><br><br>
