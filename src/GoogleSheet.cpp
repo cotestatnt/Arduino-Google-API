@@ -5,6 +5,7 @@ enum {SPREADSHEET_ID, APPEND_ROW, SHEET_ID};
 GoogleSheetAPI::GoogleSheetAPI(fs::FS &fs, Client &client, GoogleFilelist* list) : GoogleDriveAPI(fs, client, list)
 {
     m_sheetlist = list;
+	m_spreadsheet_id[0] = '\0';
 }
 
 
@@ -15,6 +16,7 @@ String GoogleSheetAPI::parseLine(String &line, const int filter, const char* fie
     if(filter == APPEND_ROW || filter == SPREADSHEET_ID){
         value = getValue(line, "\"spreadsheetId\": \"" );
         if(value.length()) {
+			strcpy(m_spreadsheet_id, value.c_str());
             return value;
         }
     }
@@ -43,12 +45,11 @@ String GoogleSheetAPI::readClient(const int filter, const char* field = nullptr 
 
     // Skip headers
     while (m_ggclient->connected()) {
-        static char old;
-        char ch = m_ggclient->read();
-        if (ch == '\n' && old == '\r') {
+        String line = m_ggclient->readStringUntil('\n');
+		serialLogln(line);
+        if (line == "\r") {
             break;
         }
-        old = ch;
     }
 
     // get body content
@@ -133,13 +134,11 @@ uint32_t  GoogleSheetAPI::hasSheet(const char *sheetName, const char *spreadshee
 }
 
 
-
-// DRIVE methods
-
-String GoogleSheetAPI::newSpreadsheet(const char *spreadsheetName, const char *sheetName, const char *parentId)
+const char* GoogleSheetAPI::newSpreadsheet(const char *spreadsheetName, const char *sheetName, const char *parentId)
 {
     functionLog() ;
     checkRefreshTime();
+	m_spreadsheet_id[0] = '\0';
 
     // Create new spreadsheet
     String req =  "{\"properties\": {\"title\": \"" ;
@@ -149,20 +148,31 @@ String GoogleSheetAPI::newSpreadsheet(const char *spreadsheetName, const char *s
     req += "\"}}]}";
 
     sendCommand("POST ", API_SHEET_HOST, "/v4/spreadsheets", req.c_str(), true);
-    serialLogln("\nHTTP Response:");
-    String ssheetId = readClient(SPREADSHEET_ID, sheetName);
+	delay(100);
 
-    // Set parent for the new created file
-    //  PATCH https://www.googleapis.com/drive/v2/files/13P-IU3zKM2orBAUggqycdemtsu8p3R5rtna9-VPBzog?addParents=1UDcC0TfEzMO_2Kb7OgEThsXsEJhYlkxWHTTP/1.1
-    req = "/drive/v2/files/";
-    req += ssheetId;
+    readClient(SPREADSHEET_ID, sheetName);
+	serialLogln("\nCreate new spreadsheet. ID: ");
+	serialLogln(m_spreadsheet_id);
+
+	setParentFolderId(parentId);
+
+    return (const char*) m_spreadsheet_id;
+}
+
+
+// DRIVE methods
+const char* GoogleSheetAPI::setParentFolderId(const char* parentId)
+{
+	// Set parent for the new created file
+    String req = "/drive/v2/files/";
+    req += m_spreadsheet_id;
     req += "?addParents=";
     req += parentId;
     sendCommand("PATCH ", API_DRIVE_HOST, req.c_str(), "", true);
-    readClient(SPREADSHEET_ID, sheetName);
-    return ssheetId;
-}
+    readClient(SPREADSHEET_ID);
 
+	return (const char*) m_spreadsheet_id;
+}
 
 bool GoogleSheetAPI::updateSheetList(String& query){
     functionLog() ;

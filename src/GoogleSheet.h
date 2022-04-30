@@ -28,15 +28,16 @@ public:
     inline char*    getListSheetId(const char* name){ return (char*) m_sheetlist->getFileId(name); }
     inline uint16_t getListNumSheets()              { return m_sheetlist->size(); }
     bool            updateSheetList(String& query);
+	const char*     setParentFolderId(const char* parentId);
 
     // Methods for handling single spreadsheet id
-    inline void     setSheetId(const char* id)  { m_spreadsheet_id = strdup(id); }
-    inline void     setSheetId(String id)       { setSheetId(id.c_str()); }
+    inline void     setSheetId(const char* id)  { strcpy(m_spreadsheet_id, id); }
+    inline void     setSheetId(String id)       { strcpy(m_spreadsheet_id, id.c_str()); }
     inline char*    getSheetId()                { return m_spreadsheet_id; }
 
     // // Create a new spreadsheet and return the id
-    String          newSpreadsheet(const char *spreadsheetName, const char *sheetName, const char *parentId);
-    inline String   newSpreadsheet(String spreadsheetName, String sheetName, String parentId) {
+    const char*          newSpreadsheet(const char *spreadsheetName, const char *sheetName, const char *parentId);
+    inline const char*   newSpreadsheet(String spreadsheetName, String sheetName, String parentId) {
                                             return newSpreadsheet(spreadsheetName.c_str(), sheetName.c_str(), parentId.c_str() );  }
 
     // Create a new sheet (in spreadsheet) and return the id
@@ -48,7 +49,7 @@ public:
     bool appendRowToSheet(const char* spreadsheetId, const char* range, const char* row) ;
 
 private:
-    char* m_spreadsheet_id = (char*)"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";   // 44 random chars
+    char m_spreadsheet_id[44+1];   // 44 random chars
     String readClient(const int expected, const char* field );
     String parseLine(String &line, const int expected, const char* field);
     GoogleFilelist * m_sheetlist = nullptr;

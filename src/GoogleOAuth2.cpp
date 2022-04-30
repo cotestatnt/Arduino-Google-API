@@ -151,10 +151,9 @@ void GoogleOAuth2::sendCommand(const char *const &rest, const char *const &host,
             return ;
     m_ggclient->print(rest);
     m_ggclient->print(command);
-    m_ggclient->print(F(" HTTP/1.1"));
+    m_ggclient->print(F(" HTTP/1.0"));
     m_ggclient->print(F("\r\nHost: "));
     m_ggclient->print(host);
-    m_ggclient->print(F("\r\nUser-Agent: arduino-esp"));
     m_ggclient->print(F("\r\nConnection: keep-alive"));
     m_ggclient->print(F("\r\nAccess-Control-Allow-Credentials: true"));
     m_ggclient->print(F("\r\nAccess-Control-Allow-Origin: "));
