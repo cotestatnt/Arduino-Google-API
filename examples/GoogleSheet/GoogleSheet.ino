@@ -2,10 +2,6 @@
 #include <GoogleSheet.h>
 #include <esp-fs-webserver.h>   // https://github.com/cotestatnt/esp-fs-webserver
 
-#ifndef LED_BUILTIN
-#define LED_BUILTIN 2
-#endif
-
 // Timezone definition to get properly time from NTP server
 #define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
 struct tm Time;
@@ -112,11 +108,11 @@ bool createGoogleSheet() {
 
         //Check if the "app folder" is present in your Drive and store the ID
         String folderId = mySheet.searchFile(folderName);
-        mySheet.setAppFolderId(folderId);
-        Serial.printf("App folder present, id: %s\n", folderId.c_str());
 
         // An ID founded for application folder (33 chars random string)
         if (folderId.length() >= 30 ) {
+          mySheet.setAppFolderId(folderId);
+          Serial.printf("App folder present, id: %s\n", folderId.c_str());
 
           // Create a new spreadsheet if not exist, return the sheet ID (44 random chars)
           String spreadSheetId = mySheet.searchFile(spreadSheetName, folderId);
@@ -129,7 +125,6 @@ bool createGoogleSheet() {
             Serial.printf("New Spreasheet created, ID: %s\n", newSheetId.c_str());
             mySheet.setSheetId(newSheetId);
             delay(500);
-
             // Add header row  ['colA', 'colB', 'colC', .... ]
             String row = "['Timestamp', 'Max free heap', 'Max block size', 'Difference']";
             String range = sheetName;
@@ -159,7 +154,7 @@ bool createGoogleSheet() {
 ////////////////////////////////  Configure and start local webserver  /////////////////////////////////////////
 void configureWebServer() {
   // Try to connect to flash stored SSID, start AP if fails after timeout
-  IPAddress myIP = myWebServer.startWiFi(10000, "ESP_AP", "123456789" );
+  IPAddress myIP = myWebServer.startWiFi(10000, HOSTNAME, "" );
 
   // Configure /setup page and start Web Server
   myWebServer.addOption(FILESYSTEM, "Drive Folder Name", folderName);
@@ -168,11 +163,10 @@ void configureWebServer() {
 
   // Add 2 buttons for ESP restart and ESP Google authorization page
   myWebServer.addOption(FILESYSTEM, "raw-html-button", button_html);
-
   String infoStr = String(info_html);
   infoStr.replace("SETUP_PAGE__PLACEHOLDER", hostname);
-  Serial.println(infoStr);
   myWebServer.addOption(FILESYSTEM, "raw-html-info", infoStr);
+
   myWebServer.addHandler("/config", handleConfigPage);
 
   // Start webserver
@@ -210,7 +204,7 @@ void appendData() {
       snprintf(row, sizeof(row), "[%s, %d, %d, %s]", buffer, free, max, formulaExample);
       String range = sheetName;
       range += "!A1";
-      if ( mySheet.appendRowToSheet( mySheet.getSheetId(), range.c_str(), row)) 
+      if ( mySheet.appendRowToSheet( mySheet.getSheetId(), range.c_str(), row))
         Serial.printf("New row appended to %s::%s succesfully\n", spreadSheetName.c_str(), sheetName.c_str());
       else
         Serial.println("Failed to append data to Sheet");
