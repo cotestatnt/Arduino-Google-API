@@ -2,6 +2,10 @@
 
 ** STILL IN DEVELOPMENT ** Proveded as is
 
+Dependencies: 
+
+https://github.com/cotestatnt/esp-fs-webserver 
+
 # YouTube video tutorial
 [Arduino Google API, create and prepare a new Google Cloud Console project](https://youtu.be/YckdKgxf4bI)
 
