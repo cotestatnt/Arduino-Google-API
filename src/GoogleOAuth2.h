@@ -10,11 +10,11 @@
 #include <WiFiClientSecure.h>
 
 #ifndef DEBUG_ENABLE
-    #define DEBUG_ENABLE   1
+    #define DEBUG_ENABLE   0
 #endif
 
 #ifndef DEBUG_FUNCTION_CALL
-    #define DEBUG_FUNCTION_CALL 1
+    #define DEBUG_FUNCTION_CALL 0
 #endif
 #include "SerialLog.h"
 
