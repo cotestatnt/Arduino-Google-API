@@ -2,10 +2,6 @@
 #define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
 #define FILESYSTEM LittleFS
 
-#define HOSTNAME     "esp2drive"     // Setting hostname, you can access to http://HOSTNAME.local instead fixed ip address
-#define FOLDER_NAME  "myFolder"
-#define S_FILENAME   "myTestData"
-
 // Google API OAuth2.0 client setup default values (you can change later with setup webpage)
 const char* client_id     =  "408231038603-f9g6btf4ip5ge3guv944q01qvoa2srhf.apps.googleusercontent.com";
 const char* client_secret =  "jb7XS8CMqgSsMUuldZm3LfJG";
