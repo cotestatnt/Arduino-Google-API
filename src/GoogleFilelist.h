@@ -13,25 +13,26 @@ struct GoogleFile_t{
 class GoogleFilelist {
 
 public:
+    ~GoogleFilelist();
+
     void clearList();
-    unsigned int size();
+    unsigned int size() const;
 
     void addFile(const char* name, const char* id, bool isFolder);
-    void addFile(String& name, String& id_t, bool isFolder);
+    void addFile(const String& name, const String& id_t, bool isFolder);
     void addFile(const GoogleFile_t& gFile);
 
-    const char* getFileName(int index);
-    const char* getFileId(int index);
-    const char* getFileId(const char* name);
-    const char* getFileId(String& name);
+    const char* getFileName(int index) const;
+    const char* getFileId(int index) const;
+    const char* getFileId(const char* name) const;
+    const char* getFileId(const String& name) const;
 
-    bool isFolder(int index);
-    bool isFolder(const char* name);
-    bool isFolder(String& name);
-    bool isInList(const char* id);
-    GoogleFilelist* getList();
+    bool isFolder(int index) const;
+    bool isFolder(const char* name) const;
+    bool isFolder(String& name) const;
+    bool isInList(const char* id) const;
 
-    void printList();
+    void printList() const;
 
 private:
 

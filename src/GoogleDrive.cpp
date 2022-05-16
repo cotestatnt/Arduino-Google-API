@@ -1,6 +1,6 @@
 #include "GoogleDrive.h"
 
-GoogleDriveAPI::GoogleDriveAPI(fs::FS& fs, Client& client, GoogleFilelist* list) : GoogleOAuth2(fs, client)
+GoogleDriveAPI::GoogleDriveAPI(fs::FS &fs, Client &client, GoogleFilelist *list) : GoogleOAuth2(fs, client)
 {
     m_filelist = list;
     // ID length can be 33 or 44 characters long
@@ -8,85 +8,97 @@ GoogleDriveAPI::GoogleDriveAPI(fs::FS& fs, Client& client, GoogleFilelist* list)
     m_lookingForId.reserve(MIN_ID_LEN + 11 + 1);
 }
 
-bool GoogleDriveAPI::parsePayload(String& payload, const int filter, const char* keyword)
+bool GoogleDriveAPI::parsePayload(const String &payload, const int filter, const char *keyword)
 {
-    #if defined(ESP8266)
+#if defined(ESP8266)
     DynamicJsonDocument doc(ESP.getMaxFreeBlockSize() - 512);
-    #elif defined(ESP32)
+#elif defined(ESP32)
     DynamicJsonDocument doc(ESP.getMaxAllocHeap() - 512);
-    #else
+#else
     DynamicJsonDocument doc(payload.length() + 256);
-    #endif
+#endif
     DeserializationError err = deserializeJson(doc, payload);
-    if (err) {
+    if (err)
+    {
         log_error("deserializeJson() failed\n");
         log_error("%s\n", err.c_str());
         return false;
     }
 
-    switch (filter) {
-        case SEARCH_ID: {
-            if (doc["files"]) {
-                JsonArray array = doc["files"].as<JsonArray>();
-                for(JsonVariant file : array) {
-                    if(file["name"].as<String>().equals(keyword)) {
-                        log_debug("Found file \"%s\". ID: %s\n", keyword, file["id"].as<String>().c_str());
-                        m_lookingForId = file["id"].as<String>();
-                        return true;
-                    }
+    switch (filter)
+    {
+    case SEARCH_ID:
+    {
+        if (doc["files"])
+        {
+            JsonArray array = doc["files"].as<JsonArray>();
+            for (JsonVariant file : array)
+            {
+                if (file["name"].as<String>().equals(keyword))
+                {
+                    log_debug("Found file \"%s\". ID: %s\n", keyword, file["id"].as<String>().c_str());
+                    m_lookingForId = file["id"].as<String>();
+                    return true;
                 }
             }
-            break;
         }
+        break;
+    }
 
-        case UPLOAD_ID: {
-            const char* name =  doc["name"];
-            if (strcmp(name, keyword) == 0) {
-                m_lookingForId = doc["id"].as<String>();
-                return true;
-            }
-        }
-
-        case UPDATE_LIST: {
-            if (doc["files"]) {
-                JsonArray array = doc["files"].as<JsonArray>();
-                for(JsonVariant file : array) {
-                    if (!m_filelist->isInList(file["id"].as<String>().c_str())) {
-                        const char* id = file["id"];
-                        const char* name = file["name"];
-                        bool isFolder = file["mimeType"].as<String>().equals("application/vnd.google-apps.folder");
-                        log_debug("add file \"%s\" to Google Drive List", name);
-                        m_filelist->addFile(name, id, isFolder);
-                    }
-                }
-                log_debug("\n");
-            }
+    case UPLOAD_ID:
+    {
+        const char *name = doc["name"];
+        if (strcmp(name, keyword) == 0)
+        {
+            m_lookingForId = doc["id"].as<String>();
             return true;
         }
+    }
+
+    case UPDATE_LIST:
+    {
+        if (doc["files"])
+        {
+            JsonArray array = doc["files"].as<JsonArray>();
+            for (JsonVariant file : array)
+            {
+                if (!m_filelist->isInList(file["id"].as<String>().c_str()))
+                {
+                    const char *id = file["id"];
+                    const char *name = file["name"];
+                    bool isFolder = file["mimeType"].as<String>().equals("application/vnd.google-apps.folder");
+                    log_debug("add file \"%s\" to Google Drive List", name);
+                    m_filelist->addFile(name, id, isFolder);
+                }
+            }
+            log_debug("\n");
+        }
+        return true;
+    }
     }
 
     return false;
 }
 
-
-bool GoogleDriveAPI::readDriveClient(const int filter, const char* keyword)
+bool GoogleDriveAPI::readDriveClient(const int filter, const char *keyword)
 {
     String payload;
     readggClient(payload);
     return parsePayload(payload, filter, keyword);
 }
 
-const char* GoogleDriveAPI::searchFile(const char *fileName, const char* parentId)
+const char *GoogleDriveAPI::searchFile(const char *fileName, const char *parentId)
 {
     log_debug("Search file or folder %s\n", fileName);
 
-    if(!isAuthorized())
+    if (!isAuthorized())
         return nullptr;
 
     String cmd = F("/drive/v3/files?q=trashed=false%20and%20name%20=%20'");
     cmd += fileName;
     cmd += F("'");
-    if(parentId != nullptr){
+    if (parentId != nullptr)
+    {
         cmd += F("%20and%20'");
         cmd += parentId;
         cmd += F("'%20in%20parents");
@@ -100,16 +112,19 @@ const char* GoogleDriveAPI::searchFile(const char *fileName, const char* parentI
     return m_lookingForId.c_str();
 }
 
-void GoogleDriveAPI::printFileList(){
+void GoogleDriveAPI::printFileList() const
+{
     m_filelist->printList();
 }
 
-bool GoogleDriveAPI::updateFileList(){
+bool GoogleDriveAPI::updateFileList()
+{
     log_debug("Update the file list\n");
-    if(!isAuthorized())
+    if (!isAuthorized())
         return false;
 
-    if(m_filelist == nullptr){
+    if (m_filelist == nullptr)
+    {
         Serial.println("error: the class was initialized without GoogleFilelist object");
         return false;
     }
@@ -120,40 +135,39 @@ bool GoogleDriveAPI::updateFileList(){
     return readDriveClient(UPDATE_LIST);
 }
 
-
-const char* GoogleDriveAPI::createFolder(const char *folderName, const char *parent, bool isName)
+const char *GoogleDriveAPI::createFolder(const char *folderName, const char *parent, bool isName)
 {
     log_debug("Create new folder %s", folderName);
     checkRefreshTime();
 
-    if(!isAuthorized())
+    if (!isAuthorized())
         return nullptr;
 
     String parentId;
     isName ? parentId = searchFile(parent) : parentId = parent;
 
-    String body =  F("{\"client_id\":\"");
+    String body = F("{\"client_id\":\"");
     body += readParam("client_id");
     body += F("\",\"name\":\"");
     body += folderName;
-	body += F("\",\"mimeType\":\"application/vnd.google-apps.folder\",\"parents\":[\"");
+    body += F("\",\"mimeType\":\"application/vnd.google-apps.folder\",\"parents\":[\"");
     body += parentId.c_str();
     body += F("\"]}");
 
     sendCommand("POST ", API_HOST, "/drive/v3/files", body.c_str(), true);
     m_lookingForId = "";
-    if(readDriveClient(UPLOAD_ID, folderName)){
+    if (readDriveClient(UPLOAD_ID, folderName))
+    {
         log_debug("add file \"%s\" to Google Drive List", folderName);
         m_filelist->addFile(folderName, m_lookingForId.c_str(), true);
     }
     return m_lookingForId.c_str();
 }
 
-
 // Set spreadsheet parents (with Drive API)
-bool GoogleDriveAPI::setParentFolderId(const char* fileId, const char* parentId)
+bool GoogleDriveAPI::setParentFolderId(const char *fileId, const char *parentId)
 {
-	// Set parent for the new created file
+    // Set parent for the new created file
     String req = "/drive/v3/files/";
     req += fileId;
     req += "?addParents=";
@@ -163,36 +177,38 @@ bool GoogleDriveAPI::setParentFolderId(const char* fileId, const char* parentId)
     log_debug("Set parent folder id %s\n", parentId);
     m_lookingForId = "";
     readDriveClient(UPLOAD_ID, parentId);
-	return m_lookingForId.length() > 0;
+    return m_lookingForId.length() > 0;
 }
 
-
-const char* GoogleDriveAPI::uploadFile(const char* path, const char* id,  bool isUpdate)
+const char *GoogleDriveAPI::uploadFile(const char *path, const char *id, bool isUpdate)
 {
     log_debug("Upload file %s", path);
     checkRefreshTime();
 
-    if(!isAuthorized())
+    if (!isAuthorized())
         return nullptr;
 
-    #define BOUNDARY_UPLOAD "APP_UPLOAD_DATA"
+#define BOUNDARY_UPLOAD "APP_UPLOAD_DATA"
     File myFile = m_filesystem->open(path, "r");
-    if (!myFile || !m_filesystem->exists(path) ) {
+    if (!myFile || !m_filesystem->exists(path))
+    {
         Serial.printf("Failed to open file %s\n", path);
         return "";
     }
 
-    char * pch = strrchr(path,'/');
+    char *pch = strrchr(path, '/');
     size_t name_len = strlen(path) - (pch - path) - 1;
-    char* filename = new char[name_len+1];
+    char *filename = new char[name_len + 1];
     filename[name_len] = '\0';
-    strncpy(filename, pch+1, name_len);
+    strncpy(filename, pch + 1, name_len);
 
-    if(id != nullptr && isUpdate){
+    if (id != nullptr && isUpdate)
+    {
         log_debug("File already present, let's update it. %s\n", id);
         sendMultipartFormData(path, filename, id, true);
     }
-    else {
+    else
+    {
         log_debug("\nCreate new file\n");
         sendMultipartFormData(path, filename, id, false);
     }
@@ -201,7 +217,8 @@ const char* GoogleDriveAPI::uploadFile(const char* path, const char* id,  bool i
     // m_lookingForId = readClientDrive(UPLOAD_ID, &gFile);
     // return m_lookingForId.c_str();
     m_lookingForId = "";
-    if (readDriveClient(UPLOAD_ID, filename)) {
+    if (readDriveClient(UPLOAD_ID, filename))
+    {
         log_debug("add file \"%s\" to Google Drive List", filename);
         m_filelist->addFile(filename, m_lookingForId.c_str(), false);
     }
@@ -209,26 +226,26 @@ const char* GoogleDriveAPI::uploadFile(const char* path, const char* id,  bool i
     return m_lookingForId.c_str();
 }
 
-const char* GoogleDriveAPI::uploadFile(String &path, String &id, bool isUpdate)
- {
-    return uploadFile(path.c_str(), id.c_str(), isUpdate);
- }
-
-
-bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filename, const char* id, bool update)
+const char *GoogleDriveAPI::uploadFile(const String &path, const String &id, bool isUpdate)
 {
-    functionLog() ;
-    #define BOUND_STR          "WebKitFormBoundary7MA4YWxkTrZu0gW"
-    #define _BOUNDARY           "--" BOUND_STR
-    #define END_BOUNDARY        "\r\n--" BOUND_STR "--\r\n"
-	#define BLOCK_SIZE          1460
+    return uploadFile(path.c_str(), id.c_str(), isUpdate);
+}
+
+bool GoogleDriveAPI::sendMultipartFormData(const char *path, const char *filename, const char *id, bool update)
+{
+    functionLog();
+#define BOUND_STR "WebKitFormBoundary7MA4YWxkTrZu0gW"
+#define _BOUNDARY "--" BOUND_STR
+#define END_BOUNDARY "\r\n--" BOUND_STR "--\r\n"
+#define BLOCK_SIZE 1460
 
     if (!m_ggclient->connected())
         doConnection(API_HOST);
 
     // Check if file can be opened
     File myFile = m_filesystem->open(path, "r");
-    if (!myFile) {
+    if (!myFile)
+    {
         Serial.print(PSTR("Failed to open file "));
         Serial.println(path);
         return false;
@@ -236,7 +253,8 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
 
     String tmpStr;
     tmpStr.reserve(512);
-    if(update){
+    if (update)
+    {
         tmpStr = PSTR("PATCH /upload/drive/v3/files/");
         tmpStr += id;
         tmpStr += PSTR("?uploadType=multipart");
@@ -251,13 +269,13 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
     log_debug("%s", tmpStr.c_str());
     m_ggclient->print(tmpStr);
 
-
     tmpStr = _BOUNDARY;
     tmpStr += PSTR("\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n");
     tmpStr += PSTR("{\"name\":\"");
     tmpStr += filename;
     // This is an upload in a specific folder
-    if(!update && id != nullptr){
+    if (!update && id != nullptr)
+    {
         tmpStr += PSTR("\",\"parents\":[\"");
         tmpStr += id;
         tmpStr += PSTR("\"]}\r\n\r\n");
@@ -267,7 +285,7 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
     tmpStr += _BOUNDARY;
     tmpStr += PSTR("\r\nContent-Type: application/octet-stream\r\n\r\n");
 
-    int len = myFile.size() + tmpStr.length() + 41 ; // sizeof END_BOUNDARY;
+    int len = myFile.size() + tmpStr.length() + 41; // sizeof END_BOUNDARY;
     char contentLen[5];
     itoa(len, contentLen, 10);
 
@@ -282,18 +300,21 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
     m_ggclient->print(tmpStr);
 
     uint8_t buff[BLOCK_SIZE];
-	uint16_t count = 0;
-    while (myFile.available()) {
-		yield();
-		buff[count++] = (uint8_t)myFile.read();
-        if (count == BLOCK_SIZE ) {
-			count = 0;
+    uint16_t count = 0;
+    while (myFile.available())
+    {
+        yield();
+        buff[count++] = (uint8_t)myFile.read();
+        if (count == BLOCK_SIZE)
+        {
+            count = 0;
             m_ggclient->write(buff, BLOCK_SIZE);
         }
-	}
-    if (count > 0) {
-		m_ggclient->write(buff, count);
-	}
+    }
+    if (count > 0)
+    {
+        m_ggclient->write(buff, count);
+    }
 
     m_ggclient->print(END_BOUNDARY);
     myFile.close();
@@ -302,25 +323,22 @@ bool GoogleDriveAPI::sendMultipartFormData(const char* path, const char* filenam
     return true;
 }
 
-
-
-const char* GoogleDriveAPI::getFileName(int index)
+const char *GoogleDriveAPI::getFileName(int index) const
 {
-    return (char*) m_filelist->getFileName(index);
+    return (char *)m_filelist->getFileName(index);
 }
 
-const char* GoogleDriveAPI::getFileId(int index)
+const char *GoogleDriveAPI::getFileId(int index) const
 {
-    return (char*) m_filelist->getFileId(index);
+    return (char *)m_filelist->getFileId(index);
 }
 
-const char* GoogleDriveAPI::getFileId(const char* name)
+const char *GoogleDriveAPI::getFileId(const char *name) const
 {
-    return (char*) m_filelist->getFileId(name);
+    return (char *)m_filelist->getFileId(name);
 }
 
-unsigned int  GoogleDriveAPI::getNumFiles()
+unsigned int GoogleDriveAPI::getNumFiles() const
 {
     return m_filelist->size();
 }
-

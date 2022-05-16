@@ -2,19 +2,19 @@
 #include <ArduinoJson.h>
 
 #if defined(ESP8266)
-    #include <ESP8266WiFi.h>
+#include <ESP8266WiFi.h>
 #elif defined(ESP32)
-    #include <WiFi.h>
+#include <WiFi.h>
 #endif
 #include <FS.h>
 #include <WiFiClientSecure.h>
 
 #ifndef DEBUG_ENABLE
-    #define DEBUG_ENABLE   0
+#define DEBUG_ENABLE 1
 #endif
 
 #ifndef DEBUG_FUNCTION_CALL
-    #define DEBUG_FUNCTION_CALL 0
+#define DEBUG_FUNCTION_CALL 1
 #endif
 #include "SerialLog.h"
 
@@ -45,7 +45,6 @@ HMUfpIBvFSDJ3gyICh3WZlXi/EjJKSZp4A==
 -----END CERTIFICATE-----
 )EOF";
 
-
 #define AUTH_HOST "oauth2.googleapis.com"
 #define PORT 443
 
@@ -55,53 +54,80 @@ class GoogleOAuth2
 {
 
 public:
-    enum { INIT, REQUEST_AUTH, GOT_TOKEN, REFRESH_TOKEN, INVALID };
+    enum
+    {
+        INIT,
+        REQUEST_AUTH,
+        GOT_TOKEN,
+        REFRESH_TOKEN,
+        INVALID
+    };
     GoogleOAuth2(fs::FS &fs, Client &client);
-    bool begin(const char *id, const char *secret, const char *_scope, const char *api_key, const char* redirect_uri);
+    ~GoogleOAuth2(){};
+
+    bool begin(const char *id, const char *secret, const char *_scope, const char *api_key, const char *redirect_uri);
     bool begin();
-    int  getState();
+    int getState();
     void printConfig() const;
-    void clearConfig();
-	const char* getUserCode();
-    inline bool isAuthorized() {
+    void clearConfig() const;
+    const char *getUserCode() const;
+
+    inline bool isAuthorized()
+    {
         return (getState() == GOT_TOKEN);
     }
 
 protected:
-    Client*     m_ggclient;
-    String      m_user_code = "";
-    String      m_device_code = "";
-    String      m_token_type = "";
+    Client *m_ggclient;
+    String m_user_code = "";
+    String m_device_code = "";
+    String m_token_type = "";
 
-    fs::FS*     m_filesystem;
-    char*       m_localhost;
-    int         m_ggstate;
-    uint32_t    m_expires_at_ms;
-    const char* m_configFile = "/gapi_config.json";
+    fs::FS *m_filesystem;
+    char *m_localhost;
+    int m_ggstate;
+    uint32_t m_expires_at_ms;
+    const char *m_configFile = "/gapi_config.json";
 
-    bool doConnection( const char *host);
+    /* connect to Google server */
+    bool doConnection(const char *host) const;
+
+    /* send an HTTP command to Google server */
     void sendCommand(const char *const &rest, const char *const &host,
-                        const char *const &command, const char *const &body, bool bearer );
+                     const char *const &command, const char *const &body, bool bearer);
 
     // Return true if data succesfull parsed
-    bool readggClient(String& payload, bool keep_connection = false);
+    bool readggClient(String &payload, bool keep_connection = false);
+
     // Class specialized parser
-    bool parsePayload(String& payload);
+    bool parsePayload(const String &payload);
 
+    /* return true if access token is valid */
     bool isAccessTokenValid();
-    bool refreshToken( bool stopClient = false);         // return true on access token valid
-    bool requestDeviceCode();                            // return true on request success
-    bool pollingAuthorize();                             // true on app authorized
-    void checkRefreshTime();                             // Check if access token is still valid (local time)
 
-    bool loadConfig(const char* id, const char* secret, const char* scope, const char *api_key, const char* redirect_uri);
-    bool writeParam(const char* keyword, const char* value );
-    String readParam(const char* keyword);
+    /* return true if refresh access token succesfully */
+    bool refreshToken(bool stopClient = false); // return true on access token validù
 
-    String gzipInflate( const String& compressedBytes);
+    /* get from Google the device code */
+    bool requestDeviceCode();
 
-    /////////////////////////////////////////////////////////////
-    const String getValue(String &line, const char* param) const;
+    /* wait for a reply from Google server during authorization worlkflow */
+    bool pollingAuthorize();
+
+    /* Check if access token is still valid (local time) */
+    void checkRefreshTime();
+
+    /* load app data configuration from filesystem (gapi_config.json") */
+    bool loadConfig(const char *id, const char *secret, const char *scope, const char *api_key, const char *redirect_uri) const;
+
+    /* update a single parameter in gapi_config-json file */
+    bool writeParam(const char *keyword, const char *value) const;
+
+    /* read a single parameter from gapi_config-json file */
+    String readParam(const char *keyword) const;
+
+    /* inflate gzipped payload received from Google server */
+    String gzipInflate(const String &compressedBytes) const;
 };
 
 #endif

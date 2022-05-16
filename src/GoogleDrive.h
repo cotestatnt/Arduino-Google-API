@@ -9,69 +9,85 @@
 
 class GoogleDriveAPI : public GoogleOAuth2
 {
+    friend class GoogleSheetAPI;
 
 public:
-    GoogleDriveAPI (fs::FS& fs, Client& client, GoogleFilelist* list = nullptr);
+    GoogleDriveAPI(fs::FS &fs, Client &client, GoogleFilelist *list = nullptr);
+    ~GoogleDriveAPI(){};
 
-    unsigned int    getNumFiles();
-    const char*     getFileName(int index);
-    const char*     getFileId(int index);
-    const char*     getFileId(const char* name);
+    unsigned int getNumFiles() const;
+    const char *getFileName(int index) const;
+    const char *getFileId(int index) const;
+    const char *getFileId(const char *name) const;
 
     // Methods to store and retrieve app filder id (if files are organized by folder)
-    inline void setAppFolderId(const char* folderId) {
+    inline void setAppFolderId(const char *folderId)
+    {
         m_appFolderId = String(folderId);
     }
-    inline void setAppFolderId(String folderId) {
+    inline void setAppFolderId(const String& folderId)
+    {
         m_appFolderId = folderId;
     }
-    inline const char* getAppFolderId() {
+    inline const char *getAppFolderId()
+    {
         return m_appFolderId.c_str();
     }
 
     // return the google ID  for files or folder
-    const char*  createFolder(const char *folderName, const char *parent, bool isName = false);
-    inline const char*  createFolder(String& folderName, const char *parent, bool isName = false) {
+    const char *createFolder(const char *folderName, const char *parent, bool isName = false);
+    inline const char *createFolder(const String &folderName, const char *parent, bool isName = false)
+    {
         return createFolder(folderName.c_str(), parent, isName);
     }
-    inline const char*  createFolder(String& folderName, String& parent, bool isName = false) {
+    inline const char *createFolder(const String &folderName, const String &parent, bool isName = false)
+    {
         return createFolder(folderName.c_str(), parent.c_str(), isName);
     }
 
-    bool setParentFolderId(const char* fileId, const char* parentId);
+    bool setParentFolderId(const char *fileId, const char *parentId);
 
-    const char*  searchFile(const char *fileName,  const char* parentId = nullptr);
-    inline const char* searchFile(String& fileName,  String& parentId) {
+    const char *searchFile(const char *fileName, const char *parentId = nullptr);
+    inline const char *searchFile(const String &fileName, const String &parentId)
+    {
         return searchFile(fileName.c_str(), parentId.c_str());
     }
-    inline const char* searchFile(String& fileName ) {
+    inline const char *searchFile(const String &fileName)
+    {
         return searchFile(fileName.c_str(), nullptr);
     }
 
-    bool    updateFileList();
-    void    printFileList();
+    bool updateFileList();
+    void printFileList() const;
 
     // Upload or update file
-    const char* uploadFile( const char* path, const char* id, bool isUpdate = true);
-    const char* uploadFile( String &path, String &id, bool isUpdate = true);
+    const char *uploadFile(const char *path, const char *id, bool isUpdate = true);
+    const char *uploadFile(const String &path, const String &id, bool isUpdate = true);
 
 protected:
-    enum {WAIT_FILE, SAVE_ID, SAVE_NAME, SAVE_TYPE, SEARCH_ID, UPLOAD_ID, NEW_FILE, UPDATE_LIST};
+    enum
+    {
+        WAIT_FILE,
+        SAVE_ID,
+        SAVE_NAME,
+        SAVE_TYPE,
+        SEARCH_ID,
+        UPLOAD_ID,
+        NEW_FILE,
+        UPDATE_LIST
+    };
 
-    GoogleFilelist* m_filelist;
+    GoogleFilelist *m_filelist;
     String m_appFolderId;
     String m_lookingForId;
-    bool sendMultipartFormData(const char* path, const char* filename, const char* id, bool update = false);
+    bool sendMultipartFormData(const char *path, const char *filename, const char *id, bool update = false);
 
-    String parseLine(String &line, const int filter, GoogleFile_t* gFile );
+    String parseLine(const String &line, const int filter, GoogleFile_t *gFile);
     String uploadFileName;
 
-    // const char* readClientDrive(const int filter, GoogleFile_t* gFile = nullptr );
-
-
     // Class specialized parser
-    bool readDriveClient(const int filter,  const char* keyword = nullptr );
-    bool parsePayload(String& payload, const int filter, const char* gFile);
+    bool readDriveClient(const int filter, const char *keyword = nullptr);
+    bool parsePayload(const String &payload, const int filter, const char *gFile);
 };
 
 #endif

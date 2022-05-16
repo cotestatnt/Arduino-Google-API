@@ -5,11 +5,11 @@ enum {MAIL_ID, MAIL_LIST, READ_SNIPPET, READ_EMAIL, SEND_EMAIL};
 
 
 GoogleGmailAPI::GoogleGmailAPI(fs::FS& fs, Client &client, GmailList &list) : GoogleOAuth2(fs, client) {
-    mailList = &list;
+    m_mailList = &list;
 }
 
 
-String GoogleGmailAPI::parsePayload(String& payload, const int filter, const char* keyword)
+String GoogleGmailAPI::parsePayload(const String& payload, const int filter, const char* keyword)
 {
     #if defined(ESP8266)
     DynamicJsonDocument doc(ESP.getMaxFreeBlockSize() - 512);
@@ -37,7 +37,7 @@ String GoogleGmailAPI::parsePayload(String& payload, const int filter, const cha
                 result = doc["resultSizeEstimate"].as<String>();
                 JsonArray array = doc["messages"].as<JsonArray>();
                 for(JsonVariant message : array) {
-                    mailList->addMailId(message["id"].as<String>().c_str(), false);
+                    m_mailList->addMailId(message["id"].as<String>().c_str(), false);
                 }
             }
             break;
@@ -45,7 +45,7 @@ String GoogleGmailAPI::parsePayload(String& payload, const int filter, const cha
         case READ_SNIPPET:
             if (doc["snippet"]) {
                 result = doc["snippet"].as<String>();
-                GmailList::mailItem* mail = mailList->getItem(keyword);
+                GmailList::mailItem* mail = m_mailList->getItem(keyword);
                 JsonArray array = doc["payload"]["headers"].as<JsonArray>();
                 for(JsonVariant header : array) {
                     if (header["name"].as<String>().equals("Date"))
@@ -60,7 +60,7 @@ String GoogleGmailAPI::parsePayload(String& payload, const int filter, const cha
 
         case READ_EMAIL:
             if (doc["payload"]) {
-                GmailList::mailItem* mail = mailList->getItem(keyword);
+                GmailList::mailItem* mail = m_mailList->getItem(keyword);
                 JsonArray array = doc["payload"]["headers"].as<JsonArray>();
                 for(JsonVariant header : array) {
                     if (header["name"].as<String>().equals("Date"))
