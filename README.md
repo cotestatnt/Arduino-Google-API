@@ -5,11 +5,35 @@
 Dependencies: 
 
 https://github.com/cotestatnt/esp-fs-webserver 
+https://github.com/bblanchon/ArduinoJson
+
 
 # YouTube video tutorial
 [Arduino Google API, create and prepare a new Google Cloud Console project](https://youtu.be/YckdKgxf4bI)
 
 [Arduino Google API, upload and configure project with ESP device](https://www.youtube.com/watch?v=VSEguvlvjnY)
+
+
+# Features
++ Authorize application for the allowed scopes
++ Save and refresh access token (local filesystem )
+
+GoogleSheetAPI Class 
++ Create spreadsheet on Google Drive
++ Create sheets in a provided spreadsheet
++ Append rows to spreadsheet (formula supported)
+ 
+GoogleDriveAPI Class 
++ Create folders on Google Drive
++ Upload files on Google Drive
++ Update existing files on Google Drive
++ Search for a specific file or folder
+
+GoogleGmailAPI Class
++ Get list of unread messages
++ Read metadata of message
++ Read message body (snippet or full text)
++ Send message to specific address
 
 
 ### Introduction
@@ -49,27 +73,6 @@ With a free plan, you can run up to 2 process and it's more of enought for our p
 The redirect uri has to be inserted in your OAuth 2.0 Client ID credential definition (edit it after create). Remember also to add https://apis.google.com as authorized Javascript origin.
 
 ![OAuth 2.0 Client ID](/credentials2.png)
-
-### Features
-+ Authorize application for the allowed scopes
-+ Save and refresh access token (local filesystem )
-
-GoogleSheetAPI Class 
-+ Create spreadsheet on Google Drive
-+ Create sheets in a provided spreadsheet
-+ Append rows to spreadsheet (formula supported)
- 
-GoogleDriveAPI Class 
-+ Create folders on Google Drive
-+ Upload files on Google Drive
-+ Update existing files on Google Drive
-+ Search for a specific file or folder
-
-GoogleGmailAPI Class
-+ Get list of unread messages
-+ Read metadata of message
-+ Read message body (snippet or full text)
-+ Send message to specific address
 
 ### To do
 + Add support for Calendar API
