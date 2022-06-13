@@ -1,9 +1,10 @@
 // Google API OAuth2.0 client setup default values (you can change later with setup webpage)
-const char* client_id     =  "490067847793-7gi0i59b45a79a0uq2k435iklm18s33c.apps.googleusercontent.com";
-const char* client_secret =  "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";
-const char* api_key       =  "AIzaSyDFTFbAZlIltVEwq_mePE3gEYd5tQOdszY";
+const char* client_id     =  "xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com";
+const char* client_secret =  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx-xxxxxxxxxxx";
+const char* api_key       =  "xxxxxxxxxxxxxxxxxxxxxxxxxxxx-xxxxxxxxxxxx";
 const char* scopes        =  "https://www.googleapis.com/auth/drive.file "
-                             "https://www.googleapis.com/auth/spreadsheets ";
+                             "https://www.googleapis.com/auth/spreadsheets "
+                             "https://mail.google.com/ https://www.googleapis.com/auth/calendar ";
 
 
 /*

@@ -1,10 +1,11 @@
+#define HOSTNAME     "esp2sheet"     // Setting hostname, you can access to http://HOSTNAME.local instead fixed ip address
+
 // Google API OAuth2.0 client setup default values (you can change later with setup webpage)
 const char* client_id     =  "490067847793-7gi0i59b45a79a0uq2k435iklm18s33c.apps.googleusercontent.com";
 const char* client_secret =  "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";
 const char* api_key       =  "AIzaSyDFTFbAZlIltVEwq_mePE3gEYd5tQOdszY";
 const char* scopes        =  "https://www.googleapis.com/auth/drive.file "
                              "https://www.googleapis.com/auth/spreadsheets ";
-
 
 /*
 * You can use this redirect_uri if you don't have your own.

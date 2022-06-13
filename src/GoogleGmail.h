@@ -126,14 +126,11 @@ private:
     mailItem *m_lastItem = nullptr;
 };
 
-
-
-
-class GoogleGmailAPI : public GoogleOAuth2
+class GoogleGmailAPI
 {
 public:
-    GoogleGmailAPI(fs::FS &fs, Client &client, GmailList &list);
-    ~GoogleGmailAPI(){};
+    GoogleGmailAPI(GoogleOAuth2 *auth, GmailList *list = nullptr);
+    ~GoogleGmailAPI() { delete m_auth; };
 
     // Send a new email from ESP
     String sendEmail(const char *to, const char *subject, const char *message);
@@ -156,7 +153,17 @@ public:
     bool setMessageRead(const char *idEmail);
 
 private:
-    GmailList *m_mailList;
+    enum
+    {
+        MAIL_ID,
+        MAIL_LIST,
+        READ_SNIPPET,
+        READ_EMAIL,
+        SEND_EMAIL
+    };
+
+    GoogleOAuth2 *m_auth = nullptr;
+    GmailList *m_mailList = nullptr;
 
     // Class specialized parser
     String readGMailClient(const int filter, const char *keyword = nullptr);

@@ -1,4 +1,3 @@
-
 #include <time.h>
 #include <GoogleDrive.h>
 #include <esp-fs-webserver.h>   // https://github.com/cotestatnt/esp-fs-webserver
@@ -6,10 +5,6 @@
 // Timezone definition to get properly time from NTP server
 #define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
 struct tm Time;
-
-#ifndef LED_BUILTIN
-#define LED_BUILTIN 2
-#endif
 
 // Filesystem will be used to store access credentials and custom options
 #include <FS.h>
@@ -55,13 +50,6 @@ const char* hostname = "esp2drive";
 char dataFilePath[strlen(DATA_FOLDER) + MAX_NAME_LEN + 3];
 char dataFileName[MAX_NAME_LEN + 1];    // ex. "20201025.txt"
 
-// This is the webpage used for authorize the application (OAuth2.0)
-#include "gaconfig_htm.h"
-void handleConfigPage() {
-  WebServerClass* webRequest = myWebServer.getRequest();
-  webRequest->sendHeader(PSTR("Content-Encoding"), "gzip");
-  webRequest->send_P(200, "text/html", AUTHPAGE_HTML, AUTHPAGE_HTML_SIZE);
-}
 
 ////////////////////////////////  Create new local data file on day change  /////////////////////////////////////////
 void createDayFile(const char * filePath) {
@@ -94,9 +82,7 @@ void createDayFile(const char * filePath) {
 ////////////////////////////////   Append new row to local data file /////////////////////////////////////////
 void appendMeasurement() {
 
-  /* Get updated local time from NTP */
-  getLocalTime(&Time);
-  
+  getUpdatedtime(100);
   uint32_t free, max;
 #ifdef ESP32
   free = heap_caps_get_free_size(0);
@@ -105,10 +91,10 @@ void appendMeasurement() {
   ESP.getHeapStats(&free, &max, nullptr);
 #endif
 
-  // Create name of the data file (if it's a new day, will be created a new data file)  
+  // Create name of the data file (if it's a new day, will be created a new data file)
   snprintf(dataFileName, MAX_NAME_LEN, "%04d%02d%02d.txt", Time.tm_year + 1900, Time.tm_mon + 1, Time.tm_mday );
   snprintf(dataFilePath, 30, "/%s/%s", DATA_FOLDER, dataFileName);
-  
+
   if (FILESYSTEM.exists(dataFilePath)) {
     // Add updated data to file
     char dataBuf[30];
@@ -146,21 +132,70 @@ void startFilesystem() {
 }
 
 
+////////////////////////////////  NTP Time  /////////////////////////////////////////
+void getUpdatedtime(const uint32_t timeout) {
+  uint32_t start = millis();
+  do {
+    time_t now = time(nullptr);
+    Time = *localtime(&now);
+    delay(1);
+  } while (millis() - start < timeout  && Time.tm_year <= (1970 - 1900));
+}
+
+
+////////////////////////////////  Configure and start local webserver  /////////////////////////////////////////
+
+/* This is the webpage used for authorize the application (OAuth2.0) */
+#include "gaconfig_htm.h"
+
+/* Handle /config webpage request */
+void handleConfigPage() {
+  WebServerClass* webRequest = myWebServer.getRequest();
+  webRequest->sendHeader(PSTR("Content-Encoding"), "gzip");
+  webRequest->send_P(200, "text/html", AUTHPAGE_HTML, AUTHPAGE_HTML_SIZE);
+}
+
+/* Start local webserver */
+void configureWebServer() {
+  // Try to connect to flash stored SSID, start AP if fails after timeout
+  IPAddress myIP = myWebServer.startWiFi(10000, "ESP_AP", "123456789" );
+
+  // Add 2 buttons for ESP restart and ESP Google authorization page
+  myWebServer.addOption(FILESYSTEM, "raw-html-button", button_html);
+
+  String infoStr = String(info_html);
+  infoStr.replace("SETUP_PAGE__PLACEHOLDER", hostname);
+  myWebServer.addOption(FILESYSTEM, "raw-html-info", infoStr);
+  myWebServer.addHandler("/config", handleConfigPage);
+
+  // Start webserver
+  if (myWebServer.begin()) {
+    Serial.print(F("ESP Web Server started on IP Address: "));
+    Serial.println(myIP);
+    Serial.println(F("Open /setup page to configure optional parameters"));
+    Serial.println(F("Open /edit page to view and edit files"));
+    MDNS.begin(hostname);
+  }
+}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 ////////////////////////////////  Upload local data file to Google Drive  /////////////////////////////////////////
-/*
-    Uploading file to Google Drive can block the MCU for several seconds.
-    Let's use a FreeRTOS task to handle and keeping the MCU free to do whatever else meanwhile
-*/
-void uploadToDrive(void * args) {
+void uploadToDrive() {
   // Check if file is already in file list (local)
   String fileid = myDrive.getFileId(dataFileName);
-  
+
   // Check if a file with same name is already present online and return id
   // (Google assume that file is different also if name is equal)
   if (!fileid.length())
     fileid = myDrive.searchFile(dataFileName);
   else
     Serial.printf("File id from list: %s\n", fileid.c_str());
+
+  // Check if a file with same name is already present online and return id
+  // (Google assume that file is different also if name is equal)
+  if (!fileid.length())
+    fileid = myDrive.searchFile(dataFileName);
 
   if (fileid.length()) {
     Serial.printf("%s - file present in app folder. \nCall update method for  \"%s\"\n", fileid.c_str(), dataFilePath);
@@ -184,43 +219,12 @@ void uploadToDrive(void * args) {
   }
   Serial.println("\n\nApp folder content:");
   myDrive.printFileList();
-  vTaskDelete(NULL);
 }
 
 
-
-////////////////////////////////  Configure and start local webserver  /////////////////////////////////////////
-void configureWebServer() {
-  // Try to connect to flash stored SSID, start AP if fails after timeout
-  IPAddress myIP = myWebServer.startWiFi(20000, "ESP_AP", "123456789" );
-
-  // Add 2 buttons for ESP restart and ESP Google authorization page
-  myWebServer.addOption(FILESYSTEM, "raw-html-button", button_html);
-
-  String infoStr = String(info_html);
-  infoStr.replace("SETUP_PAGE__PLACEHOLDER", hostname);
-  myWebServer.addOption(FILESYSTEM, "raw-html-info", infoStr);
-  myWebServer.addHandler("/config", handleConfigPage);
-
-  // Start webserver
-  if (myWebServer.begin()) {
-    Serial.print(F("ESP Web Server started on IP Address: "));
-    Serial.println(myIP);
-    Serial.println(F("Open /setup page to configure optional parameters"));
-    Serial.println(F("Open /edit page to view and edit files"));
-    MDNS.begin(hostname);
-  }
-}
-
-
-/////////////////////////////////    SETUP        //////////////////////////////////
 void setup() {
-  pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(115200);
   Serial.println();
-  
-  // FILESYSTEM init and load optins (ssid, password, etc etc)
-  startFilesystem();
 
   /* Set Google API web server SSL certificate and NTP timezone */
 #ifdef ESP8266
@@ -235,6 +239,12 @@ void setup() {
   configTzTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
 #endif
 
+  /* Get updated local time from NTP */
+  getUpdatedtime(10000);
+
+  /* FILESYSTEM init and print list of file*/
+  startFilesystem();
+
   /*
   * Configure local web server: with esp-fs-webserver library,
   * this will handle also the WiFi connection, the Captive Portal and included WiFiManager.
@@ -242,12 +252,6 @@ void setup() {
   * Check the examples included with library https://github.com/cotestatnt/esp-fs-webserver
   */
   configureWebServer();
-
-  /* Get updated local time from NTP */
-  getLocalTime(&Time, 10000);
-  char str[32];
-  strftime(str, sizeof(str), "%Y-%m-%dT%H:%M:%S%z", &Time);
-  Serial.println(str);
 
   /* Check if application is authorized for selected scope */
   if (myAuth.begin(client_id, client_secret, scopes, api_key, redirect_uri)) {
@@ -281,22 +285,22 @@ void setup() {
       Serial.print(warning_message);
     }
   }
+
 }
 
-
-/////////////////////////////////      LOOP        //////////////////////////////////
 void loop() {
-  
-  if (/*!myAuth.isAuthorized()*/true) {
-    /*
-    * If not authorized run webserver to handle /config webpage requests.
-    * For debug purpose, you would leave the webserver run also after authorization successfully
-    */
+
+  /*
+  * If not authorized run webserver to handle /config webpage requests.
+  * For debug purpose, you would leave the webserver run also after authorization successfully
+  */
+  if (!myAuth.isAuthorized()) {
     myWebServer.run();
 #ifdef ESP8266
     MDNS.update();
 #endif
   }
+
   // Add new measure once 5 seconds
   static uint32_t dataTime;
   if (millis() - dataTime > 5000) {
@@ -306,25 +310,10 @@ void loop() {
 
   // Upload data file to Google Drive once a minute
   static uint32_t uploadTime;
-  if (millis() - uploadTime > 60000 && myAuth.isAuthorized()) {
+  if (millis() - uploadTime > 60000) {
     uploadTime = millis();
-    // Start uploadToDrive in a parallel task
-    xTaskCreate(
-      uploadToDrive,    // Function to implement the task
-      "uploadToDrive",  // Name of the task
-      8192,             // Stack size in words
-      NULL,             // Task input parameter
-      1,                // Priority of the task
-      NULL              // Task handle.
-    );
-  }
-
-  // Blink built-in led to show NON-blocking working mode
-  static uint32_t ledTime = millis();
-  static bool doBlink = false;
-  if (millis() - ledTime > 150) {
-    ledTime = millis();
-    doBlink = !doBlink;
-    digitalWrite(LED_BUILTIN, doBlink);
+    uploadToDrive();
+    Serial.print("Upload time: ");
+    Serial.println(millis() - uploadTime);
   }
 }

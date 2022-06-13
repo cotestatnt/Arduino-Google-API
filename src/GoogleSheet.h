@@ -12,16 +12,9 @@ class GoogleSheetAPI : public GoogleDriveAPI
 {
 
 public:
-    GoogleSheetAPI(fs::FS &fs, Client &client, GoogleFilelist *list = nullptr);
-    ~GoogleSheetAPI(){};
-
-    // Methods for handling the spreadsheet list
-    inline void printSheetList() const { m_sheetlist->printList(); }
-    inline char *getListSheetName(int index) { return (char *)m_sheetlist->getFileName(index); }
-    inline char *getListSheetId(int index) { return (char *)m_sheetlist->getFileId(index); }
-    inline char *getListSheetId(const char *name) { return (char *)m_sheetlist->getFileId(name); }
-    inline uint16_t getListNumSheets() { return m_sheetlist->size(); }
-    bool updateSheetList(String &query);
+    //GoogleSheetAPI(fs::FS &fs, Client &client, GoogleFilelist *list = nullptr);
+    GoogleSheetAPI(GoogleOAuth2 *auth, GoogleFilelist *list = nullptr);
+    ~GoogleSheetAPI(){ delete m_auth;};
 
     // Methods for handling single spreadsheet id
     inline const char *getSpreadsheetId() { return m_spreadsheetId.c_str(); }
@@ -49,10 +42,23 @@ public:
         return appendRowToSheet(spreadsheetId.c_str(), range.c_str(), row.c_str());
     }
 
+    // Check if the spreadsheet is present in Google Drive
+    const char* isSpreadSheet(const char *spreadsheetName, const char* parentName, bool createFolder = true);
+    inline const char* isSpreadSheet(const String &spreadsheetName, const String &parentName, bool createFolder = true)
+    {
+        return isSpreadSheet(spreadsheetName.c_str(), parentName.c_str(), createFolder);
+    }
+
+    // Return the id of spreadsheet parent folder
+    const char* getParentId() {
+        return m_parentId.c_str();
+    }
+
+    bool updateSheetList(String &query);
+
 private:
     String m_spreadsheetId;
-    String m_lookingForId;
-    GoogleFilelist *m_sheetlist = nullptr;
+    String m_parentId;
 
     // Class specialized parser
     bool readSheetClient(const int filter, const char *keyword = nullptr);

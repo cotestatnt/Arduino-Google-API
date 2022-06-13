@@ -9,7 +9,6 @@ GoogleOAuth2::GoogleOAuth2(fs::FS &fs, Client &client)
     m_ggstate = INIT;
 }
 
-
 bool GoogleOAuth2::begin()
 {
     File file = m_filesystem->open(m_configFile, "r");
@@ -119,7 +118,7 @@ bool GoogleOAuth2::loadConfig(const char *id, const char *secret, const char *_s
     return true;
 }
 
-int GoogleOAuth2::getState()
+unsigned int GoogleOAuth2::getState()
 {
     // functionLog() ;
     if (m_ggstate == REQUEST_AUTH && pollingAuthorize())
@@ -173,7 +172,6 @@ void GoogleOAuth2::sendCommand(const char *const &rest, const char *const &host,
     m_ggclient->print(F("\r\nAccess-Control-Allow-Origin: "));
 
     String outStr = F("http://");
-
 #ifdef ESP8266
     outStr += WiFi.hostname().c_str();
 #elif defined(ESP32)
@@ -195,6 +193,7 @@ void GoogleOAuth2::sendCommand(const char *const &rest, const char *const &host,
         m_ggclient->print(readParam("access_token"));
     }
     m_ggclient->print(F("\r\n\r\n"));
+
     if (strlen(body) > 0)
     {
         m_ggclient->print(body);
@@ -324,28 +323,10 @@ String GoogleOAuth2::gzipInflate(const String &compressedBytes) const
     return uncompressedBytes;
 }
 
-bool GoogleOAuth2::readggClient(String &payload, bool keep_connection)
+bool GoogleOAuth2::readggClient(String &payload, bool keep_connection, bool payload_gzip)
 {
     uint16_t len = 0, pos = 0;
-
-    // // Request sent to Google, wait for reply (with timeout)
-    // for ( uint32_t timeout = millis(); (millis() - timeout > 1000) || m_ggclient->connected(); payload = m_ggclient->readStringUntil('\n')) {
-    //     // Skip headers
-    //     #if DEBUG_ENABLE
-    //     Serial.println(payload);
-    //     #endif
-    //     if (payload == "\r") { break; }
-    //     yield();
-    // }
-
-    // // Get body content
-    // payload = "";
-
-    // while (m_ggclient->available()) {
-    //     payload += (char) m_ggclient->read();
-    //     yield();
-    // }
-
+    bool noContent = false;
     // Add scope for local variable
     {
         String line;
@@ -353,10 +334,15 @@ bool GoogleOAuth2::readggClient(String &payload, bool keep_connection)
              (millis() - timeout > 1000) || m_ggclient->connected();
              line = m_ggclient->readStringUntil('\n'))
         {
-            if (line.indexOf("Content-Length:") > -1)
+            if (line.indexOf("Content-Length:") > -1) {
                 len = line.substring(strlen("Content-Length: ")).toInt();
+                noContent = (len == 0);
+            }
             if (line == "\r")
                 break;
+            // #if DEBUG_ENABLE
+            //     Serial.println(line);
+            // #endif
         }
     }
 
@@ -371,7 +357,8 @@ bool GoogleOAuth2::readggClient(String &payload, bool keep_connection)
             yield();
         }
     }
-    payload = gzipInflate(payload);
+    if (payload_gzip)
+        payload = gzipInflate(payload);
 
 #if DEBUG_ENABLE
     Serial.println(payload);
@@ -381,6 +368,8 @@ bool GoogleOAuth2::readggClient(String &payload, bool keep_connection)
     if (!keep_connection)
         m_ggclient->stop();
 
+    if (noContent)
+        payload = "{\"noContent\":\"true\"}";
     return parsePayload(payload);
 }
 
@@ -495,7 +484,7 @@ bool GoogleOAuth2::pollingAuthorize()
     return false;
 }
 
-String GoogleOAuth2::readParam(const char *keyword) const
+const String GoogleOAuth2::readParam(const char *keyword) const
 {
     StaticJsonDocument<1024> doc;
 
@@ -566,4 +555,30 @@ void GoogleOAuth2::printConfig() const
     }
     Serial.println();
     file.close();
+}
+
+String GoogleOAuth2::urlencode(const char* str)
+{
+    static const char lookup[] = "0123456789abcdef";
+    static const char dont_escape[] = "._-$,;~()";
+
+    String encoded = "";
+
+    for (int i = 0; i < strlen(str); i++)
+    {
+        char ch = str[i];
+        /* Keep alphanumeric and other accepted characters intact */
+        if (isalnum(ch) || strchr(dont_escape, ch) != NULL)
+        {
+            encoded += ch;
+        }
+        else
+        {
+            encoded += '%';
+            encoded += lookup[(ch & 0xF0) >> 4];
+            encoded += lookup[(ch & 0x0F)];
+        }
+    }
+
+    return encoded;
 }

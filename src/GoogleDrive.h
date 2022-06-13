@@ -7,13 +7,14 @@
 
 #define API_HOST "www.googleapis.com"
 
-class GoogleDriveAPI : public GoogleOAuth2
+class GoogleDriveAPI
 {
     friend class GoogleSheetAPI;
 
 public:
-    GoogleDriveAPI(fs::FS &fs, Client &client, GoogleFilelist *list = nullptr);
-    ~GoogleDriveAPI(){};
+    //GoogleDriveAPI(fs::FS &fs, Client &client, GoogleFilelist *list = nullptr);
+    GoogleDriveAPI(GoogleOAuth2 *auth, GoogleFilelist *list = nullptr);
+    ~GoogleDriveAPI(){ delete m_auth;};
 
     unsigned int getNumFiles() const;
     const char *getFileName(int index) const;
@@ -23,15 +24,15 @@ public:
     // Methods to store and retrieve app filder id (if files are organized by folder)
     inline void setAppFolderId(const char *folderId)
     {
-        m_appFolderId = String(folderId);
+        m_driveParentId = String(folderId);
     }
     inline void setAppFolderId(const String& folderId)
     {
-        m_appFolderId = folderId;
+        m_driveParentId = folderId;
     }
     inline const char *getAppFolderId()
     {
-        return m_appFolderId.c_str();
+        return m_driveParentId.c_str();
     }
 
     // return the google ID  for files or folder
@@ -76,17 +77,17 @@ protected:
         NEW_FILE,
         UPDATE_LIST
     };
-
-    GoogleFilelist *m_filelist;
-    String m_appFolderId;
-    String m_lookingForId;
+    GoogleOAuth2   *m_auth = nullptr;
+    GoogleFilelist *m_filelist = nullptr;
+    String m_driveParentId;
+    String m_driveFileId;
     bool sendMultipartFormData(const char *path, const char *filename, const char *id, bool update = false);
 
     String parseLine(const String &line, const int filter, GoogleFile_t *gFile);
     String uploadFileName;
 
     // Class specialized parser
-    bool readDriveClient(const int filter, const char *keyword = nullptr);
+    bool readDriveClient(const int filter, const char *keyword = nullptr,  bool payload_gzip = true);
     bool parsePayload(const String &payload, const int filter, const char *gFile);
 };
 

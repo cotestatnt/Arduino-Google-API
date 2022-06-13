@@ -9,7 +9,7 @@ extern "C" {
 #include "libb64/cencode.h"
 }
 
-class base64
+class Base64
 {
 public:
 	/**
@@ -35,7 +35,7 @@ public:
 		return String("-FAIL-");
 	}
 
-	
+
 	/**
 	 * convert input data to base64
 	 * @param text const String&
@@ -43,10 +43,10 @@ public:
 	 */
     static String encode(const String& text)
 	{
-		return base64::encode((uint8_t *) text.c_str(), text.length());
+		return Base64::encode((uint8_t *) text.c_str(), text.length());
 	}
-	
-	
+
+
 	/**
 	 * convert input base64 to plain text
 	 * @param base64 const char*
@@ -56,11 +56,11 @@ public:
 	{
 		int len = strlen(base64);
 		char plainText[len];
-		
+
 		base64_decode_chars(base64, len, plainText);
-		return plainText;	
+		return plainText;
 	}
-	
+
 	/**
 	 * convert input base64 to plain text
 	 * @param base64 const String&
@@ -70,7 +70,7 @@ public:
 	{
 		return decode(base64.c_str());
 	}
-	
+
 private:
 };
 

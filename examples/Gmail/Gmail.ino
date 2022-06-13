@@ -6,10 +6,8 @@
 #define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
 struct tm Time;
 
-///////////////////////////////////////////////////////////////////////////
 // Add this scopes to your project in order to be able to handle Gmail API
 // https://mail.google.com/ https://www.googleapis.com/auth/gmail.modify
-///////////////////////////////////////////////////////////////////////////
 
 #include <FS.h>
 #include <LittleFS.h>
@@ -17,9 +15,9 @@ struct tm Time;
 
 #ifdef ESP8266
 ESP8266WebServer server(80);
-BearSSL::WiFiClientSecure client;
-BearSSL::Session session;
-BearSSL::X509List certificate(google_cert);
+WiFiClientSecure client;
+Session session;
+X509List certificate(google_cert);
 #elif defined(ESP32)
 WiFiClientSecure client;
 WebServer server;
@@ -113,15 +111,16 @@ bool configEmailer()
           Serial.print(F("\nFrom:   "));
           Serial.println(mailList.getFrom(id));
           Serial.print(F("Subject:  "));
-          Serial.println(mailList.getSubject(id));
-          Serial.print(F("Date: "));
-          Serial.println(mailList.getDate(id));
-          Serial.println(F("Body:"));
+          Serial.print(mailList.getSubject(id));
+          Serial.print(F(" ("));
+          Serial.print(mailList.getDate(id));
+          Serial.println(F(")"));
+
+          Serial.println(F("\nMail body:"));
           Serial.println(mail_body);
           Serial.println(F("--------------End of email-------------"));
           email.setMessageRead(id);
         }
-
         //////////////////////////////// Send Test email ///////////////////////////////////////////
         email.sendEmail("cotestatnt@yahoo.com", "Ciao Tolentino!", "Hello world from Google API Client");
       }
@@ -175,7 +174,7 @@ void setup()
   client.setSession(&session);
   client.setTrustAnchors(&certificate);
   client.setBufferSizes(1024, 1024);
-  WiFi.hostname(hostname);
+  WiFi.hostname(hostname.c_str());
   configTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
 #elif defined(ESP32)
   client.setCACert(google_cert);
@@ -194,7 +193,7 @@ void setup()
   char _time[30];
   strftime(_time, sizeof(_time), "%d/%m/%Y %H:%M:%S", &Time);
   Serial.println(_time);
-
+  Serial.readString();
 }
 
 void loop()
