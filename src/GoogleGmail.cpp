@@ -4,11 +4,10 @@
 
 
 
-GoogleGmailAPI::GoogleGmailAPI(GoogleOAuth2 *auth, GmailList *list)
+GoogleGmailAPI::GoogleGmailAPI(GoogleOAuth2 *auth, GmailList *list) : m_auth(auth)
 {
     if (list != nullptr)
         m_mailList = list;
-    m_auth = auth;
 }
 
 

@@ -1,12 +1,6 @@
 #include "GoogleCalendar.h"
 #include "Base64.h"
 
-GoogleCalendarAPI::GoogleCalendarAPI(GoogleOAuth2 *auth, EventList *list)
-{
-    if (list != nullptr)
-        m_eventList = list;
-    m_auth = auth;
-}
 
 String GoogleCalendarAPI::parsePayload(const String &payload, const int filter, const char *keyword)
 {
@@ -69,10 +63,10 @@ String GoogleCalendarAPI::parsePayload(const String &payload, const int filter, 
 
                 strptime(end_str, "%FT%T%z", &ts);
                 end = mktime(&ts);
-                m_eventList->addEvent(id, summary, start, end);
+                m_eventList.addEvent(id, summary, start, end);
             }
         }
-        result = m_eventList->size();
+        result = m_eventList.size();
         break;
 
     case NEW_EVENT:
@@ -89,14 +83,14 @@ String GoogleCalendarAPI::parsePayload(const String &payload, const int filter, 
 String GoogleCalendarAPI::readCalendarClient(const int filter, const char *keyword)
 {
     String payload;
-    m_auth->readggClient(payload, true, false);
+    m_auth.readggClient(payload, true, false);
     return parsePayload(payload, filter, keyword);
 }
 
 const char *GoogleCalendarAPI::checkCalendar(const char *calendarSummary, bool create, const char* timeZone)
 {
     m_calendarId = "";
-    m_auth->sendCommand("GET ", CALENDAR_HOST, "/calendar/v3/users/me/calendarList", "", true);
+    m_auth.sendCommand("GET ", CALENDAR_HOST, "/calendar/v3/users/me/calendarList", "", true);
     m_calendarId = readCalendarClient(CALENDARS, calendarSummary);
     /* calendar not present, create a new one */
     if (!m_calendarId.length() && create)
@@ -109,7 +103,7 @@ const char *GoogleCalendarAPI::checkCalendar(const char *calendarSummary, bool c
             m_calendarTimeZone = timeZone;
         }
         body += "\"}";
-        m_auth->sendCommand("POST ", CALENDAR_HOST, "/calendar/v3/calendars", body.c_str(), true);
+        m_auth.sendCommand("POST ", CALENDAR_HOST, "/calendar/v3/calendars", body.c_str(), true);
         m_calendarId = readCalendarClient(NEW_CALENDAR, calendarSummary);
     }
     return m_calendarId.c_str();
@@ -117,20 +111,22 @@ const char *GoogleCalendarAPI::checkCalendar(const char *calendarSummary, bool c
 
 int GoogleCalendarAPI::getEventList(const char *calendarId, const char *timeMin, const char *timeMax)
 {
+    m_eventList.clear();
+
     String request = "/calendar/v3/calendars/";
-    request += m_auth->urlencode(calendarId);
+    request += m_auth.urlencode(calendarId);
     request += "/events";
     if (timeMin != nullptr&& strlen(timeMin))
     {
         request += "?timeMin=";
-        request += m_auth->urlencode(timeMin);
+        request += m_auth.urlencode(timeMin);
         if (timeMax != nullptr && strlen(timeMax))
         {
             request += "&timeMax=";
-            request += m_auth->urlencode(timeMax);
+            request += m_auth.urlencode(timeMax);
         }
     }
-    m_auth->sendCommand("GET ", CALENDAR_HOST, request.c_str(), "", true);
+    m_auth.sendCommand("GET ", CALENDAR_HOST, request.c_str(), "", true);
     String res = readCalendarClient(EVENTS, calendarId);
     return res.toInt();
 }
@@ -143,6 +139,7 @@ int GoogleCalendarAPI::getEventList(const char *calendarId, time_t timeMin, time
 
     memset(min, '\0', sizeof(min));
     memset(max, '\0', sizeof(max));
+
 
     if (timeMin != 0)
     {
@@ -176,7 +173,6 @@ String GoogleCalendarAPI::createRRule(int recurType, int count)
 
 const char* GoogleCalendarAPI::addEvent(const char* calendarId, const char* summary, time_t start, time_t end, const char* recurrency)
 {
-    char sentence[128];
     char startStr[25+1];
     char endStr[25+1];
 
@@ -188,7 +184,7 @@ const char* GoogleCalendarAPI::addEvent(const char* calendarId, const char* summ
 
     m_calendarId = "";
     String request = "/calendar/v3/calendars/";
-    request += m_auth->urlencode(calendarId);
+    request += m_auth.urlencode(calendarId);
     request += "/events";
 
     String body = "{\"summary\": \"";
@@ -209,7 +205,7 @@ const char* GoogleCalendarAPI::addEvent(const char* calendarId, const char* summ
     else {
         body += "\"}}";
     }
-    m_auth->sendCommand("POST ", CALENDAR_HOST, request.c_str(), body.c_str(), true);
+    m_auth.sendCommand("POST ", CALENDAR_HOST, request.c_str(), body.c_str(), true);
     m_calendarId = readCalendarClient(NEW_EVENT);
 
     return m_calendarId.c_str();
@@ -226,11 +222,11 @@ const char* GoogleCalendarAPI::quickAddEvent(const char* calendarId,  const char
 {
     m_calendarId = "";
     String request = "/calendar/v3/calendars/";
-    request += m_auth->urlencode(calendarId);
+    request += m_auth.urlencode(calendarId);
     request += "/events/quickAdd?text=";
-    request += m_auth->urlencode(sentence);
+    request += m_auth.urlencode(sentence);
 
-    m_auth->sendCommand("POST ", CALENDAR_HOST, request.c_str(), "{}", true);
+    m_auth.sendCommand("POST ", CALENDAR_HOST, request.c_str(), "{}", true);
     m_calendarId = readCalendarClient(NEW_EVENT);
 
     return m_calendarId.c_str();
@@ -241,11 +237,11 @@ bool GoogleCalendarAPI::deleteEvent(const char* calendarId,  const char* eventId
     // DELETE https://www.googleapis.com/calendar/v3/calendars/calendarId/events/eventId
     m_calendarId = "";
     String request = "/calendar/v3/calendars/";
-    request += m_auth->urlencode(calendarId);
+    request += m_auth.urlencode(calendarId);
     request += "/events/";
     request += eventId;
 
-    m_auth->sendCommand("DELETE ", CALENDAR_HOST, request.c_str(), "", true);
+    m_auth.sendCommand("DELETE ", CALENDAR_HOST, request.c_str(), "", true);
     m_calendarId = readCalendarClient(DELETE_EVENT);
     return m_calendarId.equals("true");;
 }

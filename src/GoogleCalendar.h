@@ -155,10 +155,13 @@ public:
     };
     const char Freq[5][10] = {"", "DAILY", "WEEKLY", "MONTHLY", "YEARLY"};
 
-    GoogleCalendarAPI(GoogleOAuth2 *auth, EventList *list = nullptr);
-    ~GoogleCalendarAPI() { delete m_auth; };
+    /* Constructor that receive const reference to 'GoogleOAuth2' object and a reference to 'EventList'*/
+    GoogleCalendarAPI(GoogleOAuth2 &auth, EventList &list) : m_auth(auth), m_eventList(list) {}
 
-    /* check for a specific calendar with proved summary, and optionally create */
+    /* Destructor, does nothing */
+    ~GoogleCalendarAPI() {}
+
+    /* Check for a specific calendar with proved summary, and optionally create */
     const char *checkCalendar(const char *calendarSummary, bool create = true, const char *timeZone = nullptr);
     inline const char *checkCalendar(const String &calendarSummary, bool create, const char *timeZone)
     {
@@ -181,7 +184,7 @@ public:
 
     inline void prinEventList()
     {
-        m_eventList->printList();
+        m_eventList.printList();
     }
 
     /* Add a new event to specified calendar, return the id of new event
@@ -225,15 +228,16 @@ public:
     }
 
     inline EventList::EventItem* getEvent(int index) {
-        return m_eventList->getEvent(index);
+        return m_eventList.getEvent(index);
     }
 
     inline bool eventInProgress(int index) {
         EventList::EventItem* event = getEvent(index);
         time_t now = time(nullptr);
-        if ((now >= event->start) && (now <= event->stop) )
-            return true;
-        return false;
+        bool res = false;
+        if (event != nullptr)
+            res = now >= event->start && now <= event->stop;
+        return res;
     }
 
 private:
@@ -246,8 +250,11 @@ private:
         DELETE_EVENT
     };
 
-    GoogleOAuth2 *m_auth = nullptr;
-    EventList *m_eventList = nullptr;
+    /* Default constructor is declared but NOT implemented */
+    GoogleCalendarAPI();
+
+    GoogleOAuth2 & m_auth;
+    EventList & m_eventList;
 
     String m_calendarId = "";
     String m_calendarTimeZone = "";

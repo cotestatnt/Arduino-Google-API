@@ -14,7 +14,7 @@
 #define GOOGLE_OAUTH2
 
 #ifndef DEBUG_ENABLE
-#define DEBUG_ENABLE 1
+#define DEBUG_ENABLE 0
 #endif
 
 #ifndef DEBUG_FUNCTION_CALL

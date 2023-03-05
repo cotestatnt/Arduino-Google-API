@@ -1,10 +1,10 @@
 #include "GoogleDrive.h"
 
 
-GoogleDriveAPI::GoogleDriveAPI(GoogleOAuth2 *auth, GoogleFilelist *list)
+GoogleDriveAPI::GoogleDriveAPI(GoogleOAuth2 *auth, GoogleFilelist *list) : m_auth(auth)
 {
-    m_filelist = list;
-    m_auth = auth;
+    if (list != nullptr)
+        m_filelist = list;
     // ID length can be 33 or 44 characters long
     m_driveParentId.reserve(MIN_ID_LEN + 11 + 1);
     m_driveFileId.reserve(MIN_ID_LEN + 11 + 1);
@@ -30,54 +30,56 @@ bool GoogleDriveAPI::parsePayload(const String &payload, const int filter, const
 
     switch (filter)
     {
-    case SEARCH_ID:
-    {
-        if (doc["files"])
-        {
-            JsonArray array = doc["files"].as<JsonArray>();
-            for (JsonVariant file : array)
-            {
-                if (file["name"].as<String>().equals(keyword))
-                {
-                    log_debug("Found file \"%s\". ID: %s\n", keyword, file["id"].as<String>().c_str());
-                    m_driveFileId = file["id"].as<String>();
-                    return true;
-                }
-            }
-        }
-        break;
-    }
+		case SEARCH_ID:
+		{
+			if (doc["files"])
+			{
+				JsonArray array = doc["files"].as<JsonArray>();
+				for (JsonVariant file : array)
+				{
+					if (file["name"].as<String>().equals(keyword))
+					{
+						log_debug("Found file \"%s\". ID: %s\n", keyword, file["id"].as<String>().c_str());
+						m_driveFileId = file["id"].as<String>();
+						return true;
+					}
+				}
+			}
+			break;
+		}
 
-    case UPLOAD_ID:
-    {
-        const char *name = doc["name"];
-        if (strcmp(name, keyword) == 0)
-        {
-            m_driveFileId = doc["id"].as<String>();
-            return true;
-        }
-    }
+		case UPLOAD_ID:
+		{
+			const char *name = doc["name"];
+			if (strcmp(name, keyword) == 0)
+			{
+				m_driveFileId = doc["id"].as<String>();
+				return true;
+			}
+			break;
+		}
 
-    case UPDATE_LIST:
-    {
-        if (doc["files"])
-        {
-            JsonArray array = doc["files"].as<JsonArray>();
-            for (JsonVariant file : array)
-            {
-                if (!m_filelist->isInList(file["id"].as<String>().c_str()))
-                {
-                    const char *id = file["id"];
-                    const char *name = file["name"];
-                    bool isFolder = file["mimeType"].as<String>().equals("application/vnd.google-apps.folder");
-                    log_debug("add file \"%s\" to Google Drive List", name);
-                    m_filelist->addFile(name, id, isFolder);
-                }
-            }
-            log_debug("\n");
-        }
-        return true;
-    }
+		case UPDATE_LIST:
+		{
+			if (doc["files"])
+			{
+				JsonArray array = doc["files"].as<JsonArray>();
+				for (JsonVariant file : array)
+				{
+					if (!m_filelist->isInList(file["id"].as<String>().c_str()))
+					{
+						const char *id = file["id"];
+						const char *name = file["name"];
+						bool isFolder = file["mimeType"].as<String>().equals("application/vnd.google-apps.folder");
+						log_debug("add file \"%s\" to Google Drive List", name);
+						m_filelist->addFile(name, id, isFolder);
+					}
+				}
+				log_debug("\n");
+				return true;
+			}
+			break;
+		}
     }
     return false;
 }
