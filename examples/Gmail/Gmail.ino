@@ -131,28 +131,6 @@ bool configEmailer()
         Serial.println(F("Unreaded email: "));
         mailList.printList();
 
-        if (mailList.size() > 0) {
-          // Get the id of the last received unread message (that match the filter of getMailList())
-          const char * id = mailList.getMailId(0);
-
-          // Read only snippet text
-          String mail_body = email.readMail(id, true);
-          // Read complete message text
-          // String mail_body = email.readMail(id);
-
-          Serial.print(F("\nFrom:   "));
-          Serial.println(mailList.getFrom(id));
-          Serial.print(F("Subject:  "));
-          Serial.print(mailList.getSubject(id));
-          Serial.print(F(" ("));
-          Serial.print(mailList.getDate(id));
-          Serial.println(F(")"));
-
-          Serial.println(F("\nMail body:"));
-          Serial.println(mail_body);
-          Serial.println(F("--------------End of email-------------"));
-          email.setMessageRead(id);
-        }
         //////////////////////////////// Send Test email ///////////////////////////////////////////
         email.sendEmail("cotestatnt@yahoo.com", "Ciao Tolentino!", "Hello world from Google API Client");
       }
