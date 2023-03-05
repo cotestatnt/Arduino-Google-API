@@ -13,31 +13,44 @@ struct tm Time;
 #include <LittleFS.h>
 #define FILESYSTEM LittleFS
 
+
+/* The webserver it's needed only the first time in order to do OAuth2.0 authorizing workflow */
+
 #ifdef ESP8266
 ESP8266WebServer server(80);
 WiFiClientSecure client;
 Session session;
 X509List certificate(google_cert);
 #elif defined(ESP32)
+
 WiFiClientSecure client;
 WebServer server;
 #endif
 
-#include "config.h"
-
-GmailList mailList;
-GoogleGmailAPI email(FILESYSTEM, client, mailList);
+/* The webserver it's needed only the first time in order to do OAuth2.0 authorizing workflow */
 FSWebServer myWebServer(FILESYSTEM, server);
+
+
+// GmailList mailList;
+// GoogleGmailAPI email(FILESYSTEM, client, mailList);
+// FSWebServer myWebServer(FILESYSTEM, server);
 bool runWebServer = true;
 bool authorized = false;
 
+
+/* The istance of library that will handle authorization token renew */
+GoogleOAuth2 myAuth(FILESYSTEM, client);
+
+GmailList mailList;
+GoogleGmailAPI email(&myAuth, &mailList);
+
 const char* hostname = "espGmailer";
 
+#include "config.h"
 // This is the webpage used for authorize the application (OAuth2.0)
 #include "gaconfig_htm.h"
-void handleConfigPage()
-{
-  WebServerClass *webRequest = myWebServer.getRequest();
+void handleConfigPage() {
+  WebServerClass* webRequest = myWebServer.getRequest();
   webRequest->sendHeader(PSTR("Content-Encoding"), "gzip");
   webRequest->send_P(200, "text/html", AUTHPAGE_HTML, AUTHPAGE_HTML_SIZE);
 }
@@ -55,28 +68,47 @@ void getUpdatedtime(const uint32_t timeout)
 }
 
 ////////////////////////////////  Start Filesystem  /////////////////////////////////////////
-void startFilesystem()
-{
-  if (FILESYSTEM.begin())
-  {
+void startFilesystem() {
+  if (!LittleFS.begin(true)) {
+    Serial.println("LittleFS Mount Failed");
+    return;
+  }
+  else {
     File root = FILESYSTEM.open("/", "r");
     File file = root.openNextFile();
-    while (file)
-    {
-      const char *fileName = file.name();
+    while (file) {
+      const char* fileName = file.name();
       size_t fileSize = file.size();
       Serial.printf("FS File: %s, size: %lu\n", fileName, (long unsigned)fileSize);
       file = root.openNextFile();
     }
     Serial.println();
   }
-  else
-  {
-    Serial.println("ERROR on mounting filesystem. It will be formmatted!");
-    FILESYSTEM.format();
-    ESP.restart();
+}
+
+////////////////////////////////  Configure and start local webserver  /////////////////////////////////////////
+void configureWebServer() {
+  // Try to connect to flash stored SSID, start AP if fails after timeout
+  IPAddress myIP = myWebServer.startWiFi(20000, "ESP_AP", "123456789" );
+
+  // Add 2 buttons for ESP restart and ESP Google authorization page
+  myWebServer.addOption(FILESYSTEM, "raw-html-button", button_html);
+
+  String infoStr = String(info_html);
+  infoStr.replace("SETUP_PAGE__PLACEHOLDER", hostname);
+  myWebServer.addOption("raw-html-info", infoStr);
+  myWebServer.addHandler("/config", handleConfigPage);
+
+  // Start webserver
+  if (myWebServer.begin()) {
+    Serial.print(F("ESP Web Server started on IP Address: "));
+    Serial.println(myIP);
+    Serial.println(F("Open /setup page to configure optional parameters"));
+    Serial.println(F("Open /edit page to view and edit files"));
+    MDNS.begin(hostname);
   }
 }
+
 
 ////////////////////////////////  Chech GMail API configuration  /////////////////////////////////////////
 bool configEmailer()
@@ -84,10 +116,10 @@ bool configEmailer()
   if (WiFi.isConnected())
   {
     // Begin Google API handling (to store tokens and configuration, filesystem must be mounted before)
-    if (email.begin(client_id, client_secret, scopes, api_key, redirect_uri))
+    if (myAuth.begin(client_id, client_secret, scopes, api_key, redirect_uri))
     {
       // Authorization OK when we have a valid token
-      if (email.getState() == GoogleOAuth2::GOT_TOKEN)
+      if (myAuth.getState() == GoogleOAuth2::GOT_TOKEN)
       {
         Serial.print(F("\n\n-------------------------------------------------------------------------------"));
         Serial.print(F("\nYour application has the credentials to use the google API in the selected scope\n"));
@@ -104,9 +136,9 @@ bool configEmailer()
           const char * id = mailList.getMailId(0);
 
           // Read only snippet text
-          // String mail_body = email.readMail(id, true);
+          String mail_body = email.readMail(id, true);
           // Read complete message text
-          String mail_body = email.readMail(id);
+          // String mail_body = email.readMail(id);
 
           Serial.print(F("\nFrom:   "));
           Serial.println(mailList.getFrom(id));
@@ -126,7 +158,7 @@ bool configEmailer()
       }
     }
 
-    if (email.getState() == GoogleOAuth2::INVALID)
+    if (myAuth.getState() == GoogleOAuth2::INVALID)
     {
       Serial.print(warning_message);
       runWebServer = true;
@@ -134,30 +166,6 @@ bool configEmailer()
     }
   }
   return false;
-}
-
-////////////////////////////////  Configure and start local webserver  /////////////////////////////////////////
-void configureWebServer()
-{
-  // Try to connect to flash stored SSID, start AP if fails after timeout
-  IPAddress myIP = myWebServer.startWiFi(10000, hostname, "");
-
-  // Add 2 buttons for ESP restart and ESP Google authorization page
-  myWebServer.addOption(FILESYSTEM, "raw-html-button", button_html);
-  String infoStr = String(info_html);
-  infoStr.replace("SETUP_PAGE__PLACEHOLDER", hostname);
-  myWebServer.addOption(FILESYSTEM, "raw-html-info", infoStr);
-  myWebServer.addHandler("/config", handleConfigPage);
-
-  // Start webserver
-  if (myWebServer.begin())
-  {
-    Serial.print(F("ESP Web Server started on IP Address: "));
-    Serial.println(myIP);
-    Serial.println(F("Open /setup page to configure optional parameters"));
-    Serial.println(F("Open /edit page to view and edit files"));
-    MDNS.begin(hostname);
-  }
 }
 
 
@@ -182,11 +190,8 @@ void setup()
   configTzTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
 #endif
   configureWebServer();
+  configEmailer();
 
-  // Create Google sheet
-  if (configEmailer()) {
-    Serial.println("Google Sheet created succesfull");
-  }
 
   // Sync with NTP timeserver
   getUpdatedtime(5000);
