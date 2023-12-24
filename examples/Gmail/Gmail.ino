@@ -2,7 +2,7 @@
 #include <GoogleGmail.h>
 #include <esp-fs-webserver.h> // https://github.com/cotestatnt/esp-fs-webserver
 
-// Timezone definition to get properly time from NTP server
+// Timezone definition to obtain the correct time from the NTP server
 #define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
 struct tm Time;
 
@@ -38,7 +38,7 @@ bool runWebServer = true;
 bool authorized = false;
 
 
-/* The istance of library that will handle authorization token renew */
+/* The instance of library that will handle authorization token renew */
 GoogleOAuth2 myAuth(FILESYSTEM, client);
 
 GmailList mailList;
@@ -47,7 +47,7 @@ GoogleGmailAPI email(&myAuth, &mailList);
 const char* hostname = "espGmailer";
 
 #include "config.h"
-// This is the webpage used for authorize the application (OAuth2.0)
+// This is the webpage used to authorize the application (OAuth2.0)
 #include "gaconfig_htm.h"
 void handleConfigPage() {
   WebServerClass* webRequest = myWebServer.getRequest();
@@ -69,7 +69,7 @@ void getUpdatedtime(const uint32_t timeout)
 
 ////////////////////////////////  Start Filesystem  /////////////////////////////////////////
 void startFilesystem() {
-  if (!LittleFS.begin(true)) {
+  if (!LittleFS.begin()) {
     Serial.println("LittleFS Mount Failed");
     return;
   }
@@ -160,7 +160,7 @@ void setup()
   client.setSession(&session);
   client.setTrustAnchors(&certificate);
   client.setBufferSizes(1024, 1024);
-  WiFi.hostname(hostname.c_str());
+  WiFi.hostname(hostname);
   configTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
 #elif defined(ESP32)
   client.setCACert(google_cert);

@@ -1,4 +1,4 @@
-// Timezone definition to get properly time from NTP server
+// Timezone definition to obtain the correct time from the NTP server
 #define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
 #define FILESYSTEM LittleFS
 
@@ -22,17 +22,6 @@ const char* scopes        =  "https://www.googleapis.com/auth/drive.file "
 * in order to be able to edit your own custom redirect page.
 */
 const char* redirect_uri  =  "https://arduino-google-api.herokuapp.com";
-
-
-
-static const char warning_message[] PROGMEM = R"EOF(
----------------------------------------------------------------------------------
-Google says that your client is NOT VALID! You have to authorize the application.
-For instructions, check the page https://github.com/cotestatnt/Arduino-Google-API
-You need to authorize this appplication with configation webpage, then restart.
----------------------------------------------------------------------------------
-)EOF";
-
 
 static const char button_html[] PROGMEM = R"EOF(
 <button class='button' onclick=window.open('/restart')>Restart ESP</button><button class='button' style= 'background-color: crimson;' onclick=window.open('/config')>Authorize ESP</button><hr>

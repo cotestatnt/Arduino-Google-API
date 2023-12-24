@@ -2,7 +2,7 @@
 #include <GoogleDrive.h>
 #include <esp-fs-webserver.h>   // https://github.com/cotestatnt/esp-fs-webserver
 
-// Timezone definition to get properly time from NTP server
+// Timezone definition to obtain the correct time from the NTP server
 #define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
 struct tm Time;
 
@@ -17,6 +17,9 @@ struct tm Time;
   using WebServerClass = ESP8266WebServer;
   Session   session;
   X509List  certificate(google_cert);
+  #define FILE_READ "r"
+  #define FILE_WRITE "w"
+  #define FILE_APPEND "a"
 #elif defined(ESP32)
   #include <WiFi.h>
   using WebServerClass = WebServer;
@@ -31,10 +34,10 @@ FSWebServer myWebServer(FILESYSTEM, server);
 /* The web client used from library */
 WiFiClientSecure client;
 
-/* The istance of library that will handle authorization token renew */
+/* The instance of library that will handle authorization token renew */
 GoogleOAuth2 myAuth(FILESYSTEM, client);
 
-/* The istance of library that will handle Drive API.
+/* The instance of library that will handle Drive API.
 * GoogleFilelist object is optional, but can take a local reference to remote IDs
 * in order to speed up file operations like searching or similar.
 */
@@ -114,7 +117,7 @@ void appendMeasurement() {
 
 ////////////////////////////////  Start Filesystem  /////////////////////////////////////////
 void startFilesystem() {
-  if (!LittleFS.begin(true)) {
+  if (!LittleFS.begin()) {
     Serial.println("LittleFS Mount Failed");
     return;
   }
@@ -145,7 +148,7 @@ void getUpdatedtime(const uint32_t timeout) {
 
 ////////////////////////////////  Configure and start local webserver  /////////////////////////////////////////
 
-/* This is the webpage used for authorize the application (OAuth2.0) */
+/* This is the webpage used to authorize the application (OAuth2.0) */
 #include "gaconfig_htm.h"
 
 /* Handle /config webpage request */
@@ -231,7 +234,7 @@ void setup() {
   client.setSession(&session);
   client.setTrustAnchors(&certificate);
   client.setBufferSizes(1024, 1024);
-  WiFi.hostname(hostname.c_str());
+  WiFi.hostname(hostname);
   configTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
 #elif defined(ESP32)
   client.setCACert(google_cert);
@@ -245,12 +248,12 @@ void setup() {
   /* FILESYSTEM init and print list of file*/
   startFilesystem();
 
-  /*
-  * Configure local web server: with esp-fs-webserver library,
-  * this will handle also the WiFi connection, the Captive Portal and included WiFiManager.
-  * The webserver can be also extended with custom options or webpages for other purposes.
-  * Check the examples included with library https://github.com/cotestatnt/esp-fs-webserver
-  */
+/*
+ * Configure the local web server using the esp-fs-webserver library.
+ * This will also handle WiFi connection, the Captive Portal, and the included WiFiManager.
+ * The web server can be extended with custom options or web pages for other purposes.
+ * Check the examples included with the library at: https://github.com/cotestatnt/esp-fs-webserver
+ */
   configureWebServer();
 
   /* Check if application is authorized for selected scope */

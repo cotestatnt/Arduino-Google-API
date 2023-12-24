@@ -2,7 +2,7 @@
 #include <GoogleSheet.h>
 #include <esp-fs-webserver.h> // https://github.com/cotestatnt/esp-fs-webserver
 
-// Timezone definition to get properly time from NTP server
+// Timezone definition to obtain the correct time from the NTP server
 #define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
 struct tm Time;
 
@@ -13,7 +13,7 @@ struct tm Time;
 
 #include <WiFiClientSecure.h>
 #ifdef ESP8266
-#include <ESP8266WiFi.h>€
+#include <ESP8266WiFi.h>
 using WebServerClass = ESP8266WebServer;
 Session session;
 X509List certificate(google_cert);
@@ -31,10 +31,10 @@ FSWebServer myWebServer(FILESYSTEM, server);
 /* The web client used from library */
 WiFiClientSecure client;
 
-/* The istance of library that will handle authorization token renew */
+/* The instance of library that will handle authorization token renew */
 GoogleOAuth2 myAuth(FILESYSTEM, client);
 
-/* The istance of library that will handle Sheet API.
+/* The instance of library that will handle Sheet API.
  * GoogleFilelist object is optional, but can take a local reference to remote IDs
  * in order to speed up file operations like searching or similar.
  */
@@ -65,7 +65,7 @@ void getUpdatedtime(const uint32_t timeout)
 ////////////////////////////////  Start Filesystem  /////////////////////////////////////////
 void startFilesystem()
 {
-  if (!LittleFS.begin(true))
+  if (!LittleFS.begin())
   {
     Serial.println("LittleFS Mount Failed");
     return;
@@ -87,7 +87,7 @@ void startFilesystem()
 
 ////////////////////////////////  Configure and start local webserver  /////////////////////////////////////////
 
-/* This is the webpage used for authorize the application (OAuth2.0) */
+/* This is the webpage used to authorize the application (OAuth2.0) */
 #include "gaconfig_htm.h"
 
 /* Handle /config webpage request */
@@ -168,7 +168,7 @@ void setup()
   client.setSession(&session);
   client.setTrustAnchors(&certificate);
   client.setBufferSizes(1024, 1024);
-  WiFi.hostname(hostname.c_str());
+  WiFi.hostname(hostname);
   configTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
 #elif defined(ESP32)
   client.setCACert(google_cert);

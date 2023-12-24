@@ -2,7 +2,7 @@
 #include <GoogleSheet.h>
 #include <esp-fs-webserver.h>   // https://github.com/cotestatnt/esp-fs-webserver
 
-// Timezone definition to get properly time from NTP server
+// Timezone definition to obtain the correct time from the NTP server
 #define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
 struct tm Time;
 
@@ -15,6 +15,9 @@ ESP8266WebServer server(80);
 BearSSL::WiFiClientSecure client;
 BearSSL::Session   session;
 BearSSL::X509List  certificate(google_cert);
+#define FILE_READ "r"
+#define FILE_WRITE "w"
+#define FILE_APPEND "a"
 #elif defined(ESP32)
 WiFiClientSecure client;
 WebServer server;
@@ -32,13 +35,21 @@ String dataFolderName = FOLDER_NAME;    // Local folder for store data files
 char dataFilePath[strlen(FOLDER_NAME) + MAX_NAME_LEN +1];
 char dataFileName[MAX_NAME_LEN + 1];    // ex. "20201025.txt"  
 
+/* The instance of library that will handle authorization token renew */
+GoogleOAuth2 myAuth(FILESYSTEM, client);
+
+/* The instance of library that will handle Drive API.
+* GoogleFilelist object is optional, but can take a local reference to remote IDs
+* in order to speed up file operations like searching or similar.
+*/
 GoogleFilelist driveList;
-GoogleDriveAPI myDrive(FILESYSTEM, client, &driveList );
+GoogleDriveAPI myDrive(&myAuth, &driveList);
+
 FSWebServer myWebServer(FILESYSTEM, server);
 bool runWebServer = true;
 bool authorized = false;
 
-// This is the webpage used for authorize the application (OAuth2.0)
+// This is the webpage used to authorize the application (OAuth2.0)
 #include "gaconfig_htm.h"
 void handleConfigPage() {
   WebServerClass* webRequest = myWebServer.getRequest();
@@ -139,7 +150,7 @@ void appendMeasurement() {
 
 ////////////////////////////////  Start Filesystem  /////////////////////////////////////////
 void startFilesystem() {
-  if (!LittleFS.begin(true)) {
+  if (!LittleFS.begin()) {
     Serial.println("LittleFS Mount Failed");
     return;
   }
@@ -160,9 +171,9 @@ void startFilesystem() {
 bool createDriveFolder() {
   if (WiFi.isConnected()) {
     // Begin Google API handling (to store tokens and configuration, filesystem must be mounted before)
-    if (myDrive.begin(client_id, client_secret, scopes, api_key, redirect_uri)) {
+    if (myAuth.begin(client_id, client_secret, scopes, api_key, redirect_uri)) {
       // Authorization OK when we have a valid token
-      if (myDrive.getState() == GoogleOAuth2::GOT_TOKEN) {
+      if (myAuth.getState() == GoogleOAuth2::GOT_TOKEN) {
         Serial.print(F("\n\n-------------------------------------------------------------------------------"));
         Serial.print(F("\nYour application has the credentials to use the google API in the selected scope\n"));
         Serial.print(F("\n---------------------------------------------------------------------------------\n\n"));
@@ -191,7 +202,7 @@ bool createDriveFolder() {
         return true;
       }
     }
-    if (myDrive.getState() == GoogleOAuth2::INVALID) {
+    if (myAuth.getState() == GoogleOAuth2::INVALID) {
       Serial.print(warning_message);
       runWebServer = true;
       return false;
@@ -283,7 +294,7 @@ void setup() {
   client.setSession(&session);
   client.setTrustAnchors(&certificate);
   client.setBufferSizes(1024, 1024);
-  WiFi.hostname(hostname.c_str());
+  WiFi.hostname(hostname);
   configTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
 #elif defined(ESP32)
   client.setCACert(google_cert);
