@@ -2,7 +2,7 @@
 #include <GoogleSheet.h>
 #include <esp-fs-webserver.h>   // https://github.com/cotestatnt/esp-fs-webserver
 
-// Timezone definition to get properly time from NTP server
+// Timezone definition to obtain the correct time from the NTP server
 #define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
 struct tm Time;
 
@@ -35,10 +35,10 @@ String dataFolderName = FOLDER_NAME;    // Local folder for store data files
 char dataFilePath[strlen(FOLDER_NAME) + MAX_NAME_LEN +1];
 char dataFileName[MAX_NAME_LEN + 1];    // ex. "20201025.txt"  
 
-/* The istance of library that will handle authorization token renew */
+/* The instance of library that will handle authorization token renew */
 GoogleOAuth2 myAuth(FILESYSTEM, client);
 
-/* The istance of library that will handle Drive API.
+/* The instance of library that will handle Drive API.
 * GoogleFilelist object is optional, but can take a local reference to remote IDs
 * in order to speed up file operations like searching or similar.
 */
@@ -49,7 +49,7 @@ FSWebServer myWebServer(FILESYSTEM, server);
 bool runWebServer = true;
 bool authorized = false;
 
-// This is the webpage used for authorize the application (OAuth2.0)
+// This is the webpage used to authorize the application (OAuth2.0)
 #include "gaconfig_htm.h"
 void handleConfigPage() {
   WebServerClass* webRequest = myWebServer.getRequest();

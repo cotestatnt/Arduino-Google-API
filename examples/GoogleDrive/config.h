@@ -1,4 +1,4 @@
-// Timezone definition to get properly time from NTP server
+// Timezone definition to obtain the correct time from the NTP server
 #define MYTZ "CET-1CEST,M3.5.0,M10.5.0/3"
 #define FILESYSTEM LittleFS
 
