@@ -13,7 +13,7 @@ struct tm Time;
 
 #include <WiFiClientSecure.h>
 #ifdef ESP8266
-#include <ESP8266WiFi.h>€
+#include <ESP8266WiFi.h>
 using WebServerClass = ESP8266WebServer;
 Session session;
 X509List certificate(google_cert);

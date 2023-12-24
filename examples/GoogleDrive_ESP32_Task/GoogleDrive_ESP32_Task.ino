@@ -22,6 +22,9 @@ struct tm Time;
   using WebServerClass = ESP8266WebServer;
   Session   session;
   X509List  certificate(google_cert);
+  #define FILE_READ "r"
+  #define FILE_WRITE "w"
+  #define FILE_APPEND "a"
 #elif defined(ESP32)
   #include <WiFi.h>
   using WebServerClass = WebServer;
