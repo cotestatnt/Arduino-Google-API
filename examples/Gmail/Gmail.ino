@@ -69,7 +69,7 @@ void getUpdatedtime(const uint32_t timeout)
 
 ////////////////////////////////  Start Filesystem  /////////////////////////////////////////
 void startFilesystem() {
-  if (!LittleFS.begin(true)) {
+  if (!LittleFS.begin()) {
     Serial.println("LittleFS Mount Failed");
     return;
   }
@@ -160,7 +160,7 @@ void setup()
   client.setSession(&session);
   client.setTrustAnchors(&certificate);
   client.setBufferSizes(1024, 1024);
-  WiFi.hostname(hostname.c_str());
+  WiFi.hostname(hostname);
   configTime(MYTZ, "time.google.com", "time.windows.com", "pool.ntp.org");
 #elif defined(ESP32)
   client.setCACert(google_cert);
